@@ -25,22 +25,26 @@ jobs:
           go-version: '1.25'
           check-latest: true
 
-      - name: Install Linux Audio & Graphics Dependencies
+      - name: Install Linux Audio, Graphics & Virtual Display Dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev xvfb
 
       - name: Verify Dependencies
         run: go mod verify
 
-      - name: Run Unit Tests
+      - name: Run Unit Tests (Linux with xvfb)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a go test -v -race ./...
+
+      - name: Run Unit Tests (macOS)
+        if: runner.os == 'macOS'
         run: go test -v -race ./...
-        if: runner.os != 'Windows' # race detector on Unix
 
       - name: Run Unit Tests (Windows)
-        run: go test -v ./...
         if: runner.os == 'Windows'
+        run: go test -v ./...
 
       - name: Build Binary
         run: go build -v -o missile-command${{ runner.os == 'Windows' && '.exe' || '' }} .

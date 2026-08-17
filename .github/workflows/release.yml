@@ -20,10 +20,6 @@ jobs:
             goos: linux
             goarch: amd64
             output_name: missile-command-linux-amd64
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
-            output_name: missile-command-linux-arm64
           - os: macos-latest
             goos: darwin
             goarch: arm64
@@ -58,6 +54,7 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: ${{ matrix.goos == 'darwin' && '1' || (matrix.goos == 'linux' && '1' || '0') }}
         run: |
+          mkdir -p dist
           go build -ldflags="-s -w" -o dist/${{ matrix.output_name }} .
 
       - name: Upload Artifact
