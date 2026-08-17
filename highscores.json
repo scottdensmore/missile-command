@@ -1,0 +1,44 @@
+{
+  "entries": [
+    {
+      "initials": "DFT",
+      "score": 75000
+    },
+    {
+      "initials": "SRC",
+      "score": 65000
+    },
+    {
+      "initials": "EPL",
+      "score": 55000
+    },
+    {
+      "initials": "GMD",
+      "score": 45000
+    },
+    {
+      "initials": "MOS",
+      "score": 35000
+    },
+    {
+      "initials": "JRH",
+      "score": 25000
+    },
+    {
+      "initials": "LSD",
+      "score": 20000
+    },
+    {
+      "initials": "TOM",
+      "score": 15000
+    },
+    {
+      "initials": "GUY",
+      "score": 10000
+    },
+    {
+      "initials": "ACE",
+      "score": 5000
+    }
+  ]
+}

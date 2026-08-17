@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          check-latest: true
+
+      - name: Install Linux Audio & Graphics Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev
+
+      - name: Verify Dependencies
+        run: go mod verify
+
+      - name: Run Unit Tests
+        run: go test -v -race ./...
+        if: runner.os != 'Windows' # race detector on Unix
+
+      - name: Run Unit Tests (Windows)
+        run: go test -v ./...
+        if: runner.os == 'Windows'
+
+      - name: Build Binary
+        run: go build -v -o missile-command${{ runner.os == 'Windows' && '.exe' || '' }} .

@@ -1,0 +1,200 @@
+package game
+
+import (
+	"testing"
+
+	"github.com/hajimehoshi/ebiten/v2"
+)
+
+func TestPalettesAndMultipliers(t *testing.T) {
+	tests := []struct {
+		wave         int
+		expectedMult int
+	}{
+		{wave: 1, expectedMult: 1},
+		{wave: 2, expectedMult: 1},
+		{wave: 3, expectedMult: 2},
+		{wave: 4, expectedMult: 2},
+		{wave: 5, expectedMult: 3},
+		{wave: 6, expectedMult: 3},
+		{wave: 7, expectedMult: 4},
+		{wave: 8, expectedMult: 4},
+		{wave: 9, expectedMult: 5},
+		{wave: 10, expectedMult: 5},
+		{wave: 11, expectedMult: 6},
+		{wave: 12, expectedMult: 6},
+		{wave: 20, expectedMult: 6},
+		{wave: 25, expectedMult: 6},
+	}
+
+	for _, tc := range tests {
+		p := GetPaletteForWave(tc.wave)
+		if p.Multiplier != tc.expectedMult {
+			t.Errorf("Wave %d: expected multiplier %d, got %d", tc.wave, tc.expectedMult, p.Multiplier)
+		}
+	}
+}
+
+func TestWaveTableProgression(t *testing.T) {
+	w1 := GetWaveData(1)
+	if w1.TotalICBMs != 12 || w1.SmartBombs != 0 {
+		t.Errorf("Wave 1 data mismatch: %+v", w1)
+	}
+
+	w6 := GetWaveData(6)
+	if w6.SmartBombs != 1 {
+		t.Errorf("Wave 6 should introduce 1 smart bomb, got %d", w6.SmartBombs)
+	}
+
+	w19 := GetWaveData(19)
+	if w19.TotalICBMs != 22 || w19.SmartBombs != 7 {
+		t.Errorf("Wave 19 data mismatch: %+v", w19)
+	}
+
+	// Beyond wave 19 should clamp to wave 19 values
+	w50 := GetWaveData(50)
+	if w50.TotalICBMs != w19.TotalICBMs || w50.SmartBombs != w19.SmartBombs {
+		t.Errorf("Wave 50 should match wave 19: %+v vs %+v", w50, w19)
+	}
+}
+
+func TestCenterSiloSpeed(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+
+	// Aim at center of screen
+	g.Crosshair.Pos = Point{X: 128, Y: 100}
+
+	// Fire Left Base (idx 0)
+	g.fireABM(0)
+	// Fire Center Base (idx 1)
+	g.fireABM(1)
+
+	if len(g.ABMs) != 2 {
+		t.Fatalf("Expected 2 ABMs fired, got %d", len(g.ABMs))
+	}
+
+	leftABM := g.ABMs[0]
+	centerABM := g.ABMs[1]
+
+	if leftABM.Speed >= centerABM.Speed {
+		t.Errorf("Center silo ABM speed (%f) should be significantly faster than side silo ABM speed (%f)",
+			centerABM.Speed, leftABM.Speed)
+	}
+
+	if centerABM.Speed < 7.0 {
+		t.Errorf("Expected Center silo ABM speed >= 7.0, got %f", centerABM.Speed)
+	}
+}
+
+func TestSmartBombEvasion(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+
+	// Place an active expanding explosion right in front of a descending smart bomb
+	exp := &Explosion{
+		Center:    Point{X: 100, Y: 100},
+		Radius:    15.0,
+		MaxRadius: 22.0,
+		State:     StateExpanding,
+	}
+	g.Explosions = append(g.Explosions, exp)
+
+	sb := &SmartBomb{
+		Start:    Point{X: 100, Y: 75},
+		Curr:     Point{X: 100, Y: 75},
+		Target:   Point{X: 100, Y: 216},
+		Speed:    1.5,
+		Progress: 0.0,
+		Active:   true,
+	}
+	g.SmartBombs = append(g.SmartBombs, sb)
+
+	initialX := sb.Curr.X
+	g.updateSmartBombs()
+
+	// The smart bomb should steer sideways (dx != 0) to avoid the explosion center
+	if sb.Curr.X == initialX {
+		t.Errorf("Smart bomb failed to evade explosion: X remained %f", sb.Curr.X)
+	}
+}
+
+func TestHighScores(t *testing.T) {
+	hs := DefaultHighScores()
+	if len(hs.Entries) != 10 {
+		t.Fatalf("Expected 10 default high score entries, got %d", len(hs.Entries))
+	}
+
+	if hs.Entries[0].Initials != "DFT" {
+		t.Errorf("Expected top high score creator DFT, got %s", hs.Entries[0].Initials)
+	}
+
+	// Add a score higher than DFT
+	hs.AddScore("NEW", 99999)
+	if hs.Entries[0].Initials != "NEW" || hs.Entries[0].Score != 99999 {
+		t.Errorf("Failed to insert top score properly: %+v", hs.Entries[0])
+	}
+	if len(hs.Entries) != 10 {
+		t.Errorf("High score list should remain capped at 10, got %d", len(hs.Entries))
+	}
+}
+
+func TestAudioBuffers(t *testing.T) {
+	InitAudio()
+
+	if len(launchPCM) == 0 {
+		t.Error("launchPCM buffer is empty")
+	}
+	if len(explosionPCM) == 0 {
+		t.Error("explosionPCM buffer is empty")
+	}
+	if len(tallyPCM) == 0 {
+		t.Error("tallyPCM buffer is empty")
+	}
+	if len(sirenPCM) == 0 {
+		t.Error("sirenPCM buffer is empty")
+	}
+	if len(siloLowPCM) == 0 {
+		t.Error("siloLowPCM buffer is empty")
+	}
+	if len(cantFirePCM) == 0 {
+		t.Error("cantFirePCM buffer is empty")
+	}
+	if len(bonusCityPCM) == 0 {
+		t.Error("bonusCityPCM buffer is empty")
+	}
+	if len(gameOverPCM) == 0 {
+		t.Error("gameOverPCM buffer is empty")
+	}
+	if len(bomberPCM) == 0 {
+		t.Error("bomberPCM buffer is empty")
+	}
+	if len(satPCM) == 0 {
+		t.Error("satPCM buffer is empty")
+	}
+	if len(smartBombPCM) == 0 {
+		t.Error("smartBombPCM buffer is empty")
+	}
+}
+
+func TestRenderPipeline(t *testing.T) {
+	g := NewGame()
+	screen := ebiten.NewImage(1024, 924)
+
+	states := []GameState{
+		StateAttract,
+		StateWaveStart,
+		StatePlaying,
+		StateTally,
+		StateBonusRebuild,
+		StateTheEnd,
+		StateHighScoreEntry,
+	}
+
+	for _, s := range states {
+		g.State = s
+		g.Draw(screen)
+	}
+}
