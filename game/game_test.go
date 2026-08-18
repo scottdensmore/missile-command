@@ -242,4 +242,3 @@ func TestAmmoPyramidRenderingAndReduction(t *testing.T) {
 		t.Errorf("Expected Silo 0 to have 0 ammo after 10 shots, got %d", g.Batteries[0].Ammo)
 	}
 }
-
