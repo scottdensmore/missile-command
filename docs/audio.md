@@ -68,3 +68,4 @@ The original arcade hardware dedicated channels for continuous audio when enemy 
 
 ### Channel Priority & Interruption Rules
 High-priority audio alerts (such as the *Silo Low* warning or *Can't Fire* buzzer) take precedence over continuous ambient tones, momentarily pausing them and resuming smoothly upon completion.
+

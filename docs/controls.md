@@ -63,3 +63,4 @@ The arcade game features three missile bases (Alpha, Delta, Omega) with distinct
    Smart bombs dodge expanding blast perimeters. Intercept them by timing detonations right on top of them or trapping them between two simultaneous explosions.
 4. **End-of-Wave Bonus Points**:
    Unused missiles award **$5 \times \text{Multiplier}$** and saved cities award **$100 \times \text{Multiplier}$**. Conserving ammo on early waves builds high scores quickly.
+

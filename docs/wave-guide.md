@@ -73,3 +73,4 @@ $$\text{Points Earned} = \text{Base Points} \times \text{Wave Multiplier}$$
 - A **Bonus City** is awarded every **10,000 points**.
 - Bonus cities are queued in reserve (displayed as mini city icons in the lower margin).
 - At the end of a wave, if any of the 6 city positions have been destroyed, one queued bonus city is deployed with an authentic rebuilding animation and musical chime fanfare.
+

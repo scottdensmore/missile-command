@@ -89,3 +89,4 @@ stateDiagram-v2
 | [`game/scores.go`](../game/scores.go) | Top 10 leaderboard management, JSON persistence, and initials entry. |
 | [`game/shader.go`](../game/shader.go) | Kage GLSL-style CRT scanline and phosphor bloom fragment shader. |
 | [`game/math.go`](../game/math.go) | Simulation geometry, vector distances, and coordinate transformation math. |
+
