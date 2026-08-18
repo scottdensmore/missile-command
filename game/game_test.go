@@ -242,3 +242,55 @@ func TestAmmoPyramidRenderingAndReduction(t *testing.T) {
 		t.Errorf("Expected Silo 0 to have 0 ammo after 10 shots, got %d", g.Batteries[0].Ammo)
 	}
 }
+
+func TestPauseAndAudioMuting(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+
+	// Spawn a descending ICBM
+	g.ICBMs = append(g.ICBMs, &ICBM{
+		Start:  Point{X: 100, Y: 0},
+		Curr:   Point{X: 100, Y: 50},
+		Target: Point{X: 100, Y: 216},
+		Speed:  1.0,
+		Active: true,
+	})
+
+	// Add an active bomber and start continuous sound
+	g.ActiveFlier = &Flier{
+		Type:   FlierBomber,
+		X:      100,
+		Y:      70,
+		Speed:  0.8,
+		Active: true,
+	}
+	SetBomberSound(true)
+
+	// Pause game
+	g.Paused = true
+	StopAllContinuousSounds()
+
+	// Capture ICBM position
+	initialY := g.ICBMs[0].Curr.Y
+
+	// Run Update while paused
+	_ = g.Update()
+
+	// Simulation should NOT advance while paused
+	if g.ICBMs[0].Curr.Y != initialY {
+		t.Errorf("ICBM moved while paused: expected Y=%f, got Y=%f", initialY, g.ICBMs[0].Curr.Y)
+	}
+
+	// Verify continuous sounds can be restored upon unpause
+	g.Paused = false
+	g.restoreContinuousSounds()
+
+	// Unpaused Update should advance simulation
+	_ = g.Update()
+	if g.ICBMs[0].Curr.Y == initialY {
+		t.Errorf("ICBM failed to advance after unpause")
+	}
+
+	StopAllContinuousSounds()
+}

@@ -81,9 +81,10 @@ type Game struct {
 	CharSelectIdx int
 	Letters       []rune
 
-	// Mouse and Input
+	// Mouse, Pause and Input
 	PrevMouseX, PrevMouseY int
 	MouseCaptured          bool
+	Paused                 bool
 	Tick                   int
 }
 
@@ -182,6 +183,35 @@ func (g *Game) Update() error {
 		g.MouseCaptured = false
 	}
 
+	// Quit / Exit Handling (Q Key)
+	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
+		if g.State == StateAttract {
+			return ebiten.Termination
+		}
+		// Return to attract mode from game/pause
+		g.Paused = false
+		StopAllContinuousSounds()
+		g.State = StateAttract
+		return nil
+	}
+
+	// Pause / Resume Toggle (P Key)
+	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+		if g.State != StateAttract && g.State != StateHighScoreEntry {
+			g.Paused = !g.Paused
+			if g.Paused {
+				StopAllContinuousSounds()
+			} else {
+				g.restoreContinuousSounds()
+			}
+		}
+	}
+
+	// If paused, halt simulation updates
+	if g.Paused {
+		return nil
+	}
+
 	switch g.State {
 	case StateAttract:
 		g.updateAttract()
@@ -200,6 +230,26 @@ func (g *Game) Update() error {
 	}
 
 	return nil
+}
+
+func (g *Game) restoreContinuousSounds() {
+	if g.ActiveFlier != nil && g.ActiveFlier.Active {
+		if g.ActiveFlier.Type == FlierBomber {
+			SetBomberSound(true)
+		} else {
+			SetSatelliteSound(true)
+		}
+	}
+	hasActiveSmartBomb := false
+	for _, sb := range g.SmartBombs {
+		if sb.Active {
+			hasActiveSmartBomb = true
+			break
+		}
+	}
+	if hasActiveSmartBomb {
+		SetSmartBombSound(true)
+	}
 }
 
 // --- STATE UPDATES ---
@@ -1107,6 +1157,21 @@ func (g *Game) renderPlayfield(target *ebiten.Image) {
 	case StateHighScoreEntry:
 		g.drawHighScoreEntry(target)
 	}
+
+	// 13. Draw Pause Overlay
+	if g.Paused {
+		// Semi-opaque dark backdrop box
+		vector.DrawFilledRect(target, 44, 76, 168, 62, color.RGBA{R: 0, G: 0, B: 0, A: 230}, false)
+		vector.StrokeRect(target, 44, 76, 168, 62, 1.0, yellow, false)
+
+		if (g.Tick/20)%2 == 0 {
+			DrawArcadeText(target, "GAME PAUSED", 84, 88, yellow)
+		} else {
+			DrawArcadeText(target, "GAME PAUSED", 84, 88, white)
+		}
+		DrawArcadeText(target, "PRESS P TO RESUME", 60, 106, white)
+		DrawArcadeText(target, "PRESS Q TO QUIT", 68, 120, g.Palette.TextColor)
+	}
 }
 
 func (g *Game) drawHUD(target *ebiten.Image) {
@@ -1191,8 +1256,11 @@ func (g *Game) drawAttractScreen(target *ebiten.Image) {
 	}
 
 	// Copyright & Start prompt
-	DrawArcadeText(target, "© 1980 ATARI INC", 64, 178, yellow)
-	DrawArcadeText(target, "PRESS SPACE OR CLICK", 48, 208, white)
+	DrawArcadeText(target, "© 1980 ATARI INC", 64, 176, yellow)
+	DrawArcadeText(target, "P:PAUSE  Q:QUIT", 68, 190, cyan)
+	if (g.Tick/30)%2 == 0 {
+		DrawArcadeText(target, "PRESS SPACE OR CLICK", 48, 208, white)
+	}
 }
 
 func (g *Game) drawTheEndScreen(target *ebiten.Image) {

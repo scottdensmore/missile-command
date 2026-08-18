@@ -47,14 +47,14 @@ graph LR
 
 | Effect | Characteristics & Synthesis Method | Duration |
 | :--- | :--- | :---: |
-| **ABM Rocket Launch** | Pure square-wave sweep starting at 950 Hz exponentially descending to 160 Hz with a terminal volume fade. | 0.28s |
-| **Explosion Rumble** | 17-bit + 5/4-bit poly noise sampled through a 14× sample-and-hold divider with sharp attack and exponential volume decay. | 0.85s |
-| **Bonus Tally Chirp** | Crisp 1200 Hz square wave pulse played per remaining missile and surviving city counted. | 35ms |
-| **Wave Start Klaxon** | Dual-tone warbling siren alert oscillating between 480 Hz and 720 Hz at a 5 Hz LFO rate. | 1.20s |
-| **Silo Low Alarm** | Rapid dual-tone warning (880 Hz followed by 440 Hz) triggered when a silo reaches $\le 3$ missiles. | 90ms |
-| **Can't Fire Buzzer** | Low 110 Hz buzzy square wave combined with 4-bit poly distortion when clicking an empty or ruined base. | 120ms |
-| **Bonus City Fanfare** | Ascending 6-tone chime sequence ($C_5, E_5, G_5, C_6, E_6, G_6$) played when earning a bonus city every 10,000 points. | 0.54s |
-| **"THE END" Nuclear Blast** | Multi-channel deep sub-bass rumble sweeping down to 25 Hz with high-gain 17-bit poly noise. | 2.50s |
+| **ABM Rocket Launch** | Linear POKEY AUDF frequency sweep from `$20` (~970 Hz) down to `$E0` (~142 Hz) with 4-bit quantized DAC decay. | 0.28s |
+| **Explosion Rumble** | Heavy sub-bass foundation (68Hz down to 32Hz) layered with 17-bit LFSR polynomial noise down-sweep (240Hz to 55Hz). | 1.05s |
+| **Bonus Tally Chirp** | Crisp 1520 Hz (`AUDF=$14`) square wave pulse per remaining missile and surviving city counted. | 32ms |
+| **Wave Start Klaxon** | 9 Hz alternating dual-tone siren between 780 Hz (`AUDF=$28`) and 520 Hz (`AUDF=$3D`). | 1.25s |
+| **Silo Low Alarm** | Fast dual-tone warning (1032 Hz followed by 516 Hz) when a silo reaches $\le 3$ missiles. | 80ms |
+| **Can't Fire Buzzer** | Low 226 Hz square wave combined with 5-bit/4-bit poly distortion when clicking an empty or ruined base. | 110ms |
+| **Bonus City Fanfare** | Ascending 6-tone arcade arpeggio sequence ($F_5, A_5, C_6, E_6, F_6, A_6$) for bonus city awards and rebuilding. | 0.50s |
+| **"THE END" Nuclear Blast** | Multi-channel deep sub-bass earthquake rumble sweeping down to 25 Hz with high-gain 17-bit poly noise. | 2.80s |
 
 ---
 
@@ -62,10 +62,10 @@ graph LR
 
 The original arcade hardware dedicated channels for continuous audio when enemy aircraft or smart weapons entered the playfield:
 
-1. **Bomber Aircraft Drone**: 62 Hz rhythmic motor thrum with subtle second-harmonic modulation.
-2. **Satellite Telemetry**: 1350 Hz high-pitch radar pulse modulated at 8 Hz.
-3. **Smart Bomb Warble**: 220 Hz pulsing buzz modulated at 12 Hz that tracks evasive maneuvers.
+1. **Bomber Aircraft Drone**: 58 Hz low motor fundamental combined with POKEY 4-bit polynomial distortion.
+2. **Satellite Telemetry**: 1684 Hz (`AUDF=$18`) dual-pulse radar beacon every 400ms.
+3. **Smart Bomb Warble**: 7.5 Hz frequency-modulated warble oscillating between 180 Hz and 300 Hz with 5-bit poly buzz.
 
 ### Channel Priority & Interruption Rules
-High-priority audio alerts (such as the *Silo Low* warning or *Can't Fire* buzzer) take precedence over continuous ambient tones, momentarily pausing them and resuming smoothly upon completion.
+High-priority audio alerts (such as the *Silo Low* warning or *Can't Fire* buzzer) take precedence over continuous ambient tones, momentarily pausing them and resuming smoothly upon completion. When the game is paused via `P`, all continuous channels are silenced immediately.
 
