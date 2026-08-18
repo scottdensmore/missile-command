@@ -1131,11 +1131,13 @@ func (g *Game) drawTerrain(target *ebiten.Image) {
 	// Draw base ground fill
 	vector.DrawFilledRect(target, 0, 224, SimWidth, 7, groundCol, false)
 
-	// Draw 3 Silo terrain mounds
+	// Draw 3 Silo stepped terrain mounds
 	siloXs := []float64{18, 128, 238}
 	for _, sx := range siloXs {
-		vector.DrawFilledRect(target, float32(sx-12), 220, 24, 5, groundCol, false)
-		vector.DrawFilledRect(target, float32(sx-8), 216, 16, 5, groundCol, false)
+		vector.DrawFilledRect(target, float32(sx-13), 219, 26, 5, groundCol, false)
+		vector.DrawFilledRect(target, float32(sx-10), 215, 20, 5, groundCol, false)
+		vector.DrawFilledRect(target, float32(sx-7), 211, 14, 5, groundCol, false)
+		vector.DrawFilledRect(target, float32(sx-4), 207, 8, 5, groundCol, false)
 	}
 }
 
@@ -1152,19 +1154,19 @@ func (g *Game) drawSilo(target *ebiten.Image, bat Battery) {
 		return
 	}
 
-	// Draw Ammo Pyramid
-	DrawAmmoPyramid(target, bx, by+6, bat.Ammo, g.Palette.SiloColor)
+	// Draw 10-missile Ammo Pyramid inside the silo mound
+	DrawAmmoPyramid(target, bx, 220, bat.Ammo, g.Palette.SiloColor)
 
 	// Status text indicators
 	if bat.Ammo <= 3 && bat.Ammo > 0 {
 		// Flash LOW
 		if (g.Tick/15)%2 == 0 {
-			DrawArcadeText(target, "LOW", bx-12, by-10, yellow)
+			DrawArcadeText(target, "LOW", bx-12, 196, yellow)
 		}
 	} else if bat.Ammo == 0 {
 		// Flash OUT
 		if (g.Tick/15)%2 == 0 {
-			DrawArcadeText(target, "OUT", bx-12, by-10, red)
+			DrawArcadeText(target, "OUT", bx-12, 196, red)
 		}
 	}
 }

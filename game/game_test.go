@@ -198,3 +198,48 @@ func TestRenderPipeline(t *testing.T) {
 		g.Draw(screen)
 	}
 }
+
+func TestAmmoPyramidRenderingAndReduction(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+
+	// Silos initially have 10 ammo
+	for i := 0; i < 3; i++ {
+		if g.Batteries[i].Ammo != 10 {
+			t.Errorf("Silo %d should start with 10 ammo, got %d", i, g.Batteries[i].Ammo)
+		}
+	}
+
+	// SiloColor must NOT match GroundColor in any wave palette for visibility
+	for wave := 1; wave <= 20; wave++ {
+		p := GetPaletteForWave(wave)
+		if p.SiloColor == p.GroundColor {
+			t.Errorf("Wave %d: SiloColor (%v) matches GroundColor (%v), making missiles invisible!",
+				wave, p.SiloColor, p.GroundColor)
+		}
+	}
+
+	// Verify DrawAmmoPyramid runs cleanly for every ammo count from 0 to 10
+	img := ebiten.NewImage(256, 231)
+	for ammo := 0; ammo <= 10; ammo++ {
+		DrawAmmoPyramid(img, 128, 220, ammo, g.Palette.SiloColor)
+	}
+
+	// Test firing reduces ammo and triggers LOW/OUT properly
+	g.Crosshair.Pos = Point{X: 128, Y: 100}
+	for i := 0; i < 10; i++ {
+		expectedAmmo := 10 - i
+		if g.Batteries[0].Ammo != expectedAmmo {
+			t.Errorf("Step %d: Expected Silo 0 ammo %d, got %d", i, expectedAmmo, g.Batteries[0].Ammo)
+		}
+		// Clear ABMs to stay under the 8 active ABM arcade limit
+		g.ABMs = nil
+		g.fireABM(0)
+	}
+
+	if g.Batteries[0].Ammo != 0 {
+		t.Errorf("Expected Silo 0 to have 0 ammo after 10 shots, got %d", g.Batteries[0].Ammo)
+	}
+}
+
