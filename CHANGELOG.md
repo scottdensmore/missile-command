@@ -35,3 +35,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI/CD & GitHub Workflows**:
   - Multi-platform GitHub Actions CI test suite across macOS, Linux, and Windows.
   - Automated GitHub Releases workflow publishing cross-platform precompiled binaries.
+

@@ -14,7 +14,7 @@
 
 <br/>
 
-**Defend six cities from an escalating nuclear onslaught.**  
+**Defend six cities from an escalating nuclear onslaught.**
 A feature-complete, byte-for-byte authentic recreation of Dave Theurer's legendary 1980 Atari arcade masterpiece.
 
 [Play Now](#-quick-start) • [Controls](#-controls) • [Features](#-features) • [Wave Guide](#-wave-progression--color-palettes) • [Architecture](#-technical-architecture)
@@ -194,3 +194,4 @@ Tests cover:
 
 This project is open source and available under the [MIT License](LICENSE).
 Missile Command is a registered trademark of Atari Interactive, Inc. This fan recreation is developed for educational and historical preservation purposes.
+

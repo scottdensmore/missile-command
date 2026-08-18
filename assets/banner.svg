@@ -1,17 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="100%" height="100%">
   <defs>
-    <!-- Background Gradient -->
-    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#02020a" />
-      <stop offset="60%" stop-color="#090a1e" />
-      <stop offset="85%" stop-color="#18112c" />
-      <stop offset="100%" stop-color="#241434" />
+    <!-- Background Arcade Hall Ambience -->
+    <radialGradient id="arcadeHallGrad" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#140f28" />
+      <stop offset="45%" stop-color="#090616" />
+      <stop offset="85%" stop-color="#020108" />
+      <stop offset="100%" stop-color="#000000" />
+    </radialGradient>
+
+    <!-- Floor Perspective Grid -->
+    <linearGradient id="floorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a0b2e" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#030008" />
     </linearGradient>
 
-    <!-- Glowing Filters -->
+    <!-- Cabinet Wood & Metal Shading -->
+    <linearGradient id="cabSideLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#111116" />
+      <stop offset="60%" stop-color="#1c1a24" />
+      <stop offset="100%" stop-color="#2a2536" />
+    </linearGradient>
+
+    <linearGradient id="cabSideRight" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2a2536" />
+      <stop offset="40%" stop-color="#1c1a24" />
+      <stop offset="100%" stop-color="#111116" />
+    </linearGradient>
+
+    <linearGradient id="tMolding" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff3366" />
+      <stop offset="50%" stop-color="#ff9933" />
+      <stop offset="100%" stop-color="#ff3366" />
+    </linearGradient>
+
+    <!-- CRT Bezel Texture -->
+    <radialGradient id="bezelGrad" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#040406" />
+      <stop offset="70%" stop-color="#101014" />
+      <stop offset="95%" stop-color="#25252c" />
+      <stop offset="100%" stop-color="#3d3d48" />
+    </radialGradient>
+
+    <!-- CRT Glass Curvature & Glare -->
+    <radialGradient id="crtGlassGrad" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#1a1c38" stop-opacity="0.35" />
+      <stop offset="40%" stop-color="#000000" stop-opacity="0" />
+      <stop offset="85%" stop-color="#000000" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.9" />
+    </radialGradient>
+
+    <!-- Glow Filters -->
     <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="5" result="blur1" />
-      <feGaussianBlur stdDeviation="12" result="blur2" />
+      <feGaussianBlur stdDeviation="4" result="blur1" />
+      <feGaussianBlur stdDeviation="10" result="blur2" />
       <feMerge>
         <feMergeNode in="blur2" />
         <feMergeNode in="blur1" />
@@ -20,9 +61,9 @@
     </filter>
 
     <filter id="intenseGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="8" result="blur1" />
-      <feGaussianBlur stdDeviation="20" result="blur2" />
-      <feGaussianBlur stdDeviation="40" result="blur3" />
+      <feGaussianBlur stdDeviation="6" result="blur1" />
+      <feGaussianBlur stdDeviation="16" result="blur2" />
+      <feGaussianBlur stdDeviation="32" result="blur3" />
       <feMerge>
         <feMergeNode in="blur3" />
         <feMergeNode in="blur2" />
@@ -31,261 +72,351 @@
       </feMerge>
     </filter>
 
-    <!-- Explosion Gradients -->
-    <radialGradient id="expGrad1" cx="50%" cy="50%" r="50%">
+    <!-- Explosion Color Gradients -->
+    <radialGradient id="expGradWhiteYellow" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="25%" stop-color="#fff040" />
-      <stop offset="55%" stop-color="#ff3344" />
-      <stop offset="85%" stop-color="#9900ff" stop-opacity="0.8" />
+      <stop offset="25%" stop-color="#fffb00" />
+      <stop offset="55%" stop-color="#ff3300" />
+      <stop offset="85%" stop-color="#cc0066" stop-opacity="0.8" />
       <stop offset="100%" stop-color="#000000" stop-opacity="0" />
     </radialGradient>
 
-    <radialGradient id="expGrad2" cx="50%" cy="50%" r="50%">
+    <radialGradient id="expGradCyanBlue" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#ffffff" />
       <stop offset="30%" stop-color="#00ffff" />
-      <stop offset="60%" stop-color="#0066ff" />
-      <stop offset="90%" stop-color="#9900cc" stop-opacity="0.7" />
+      <stop offset="60%" stop-color="#0055ff" />
+      <stop offset="88%" stop-color="#9900ff" stop-opacity="0.75" />
       <stop offset="100%" stop-color="#000000" stop-opacity="0" />
     </radialGradient>
 
-    <radialGradient id="expGrad3" cx="50%" cy="50%" r="50%">
+    <radialGradient id="expGradOrangeRed" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#ffffff" />
-      <stop offset="20%" stop-color="#ffffaa" />
-      <stop offset="50%" stop-color="#ff6600" />
-      <stop offset="80%" stop-color="#cc0033" stop-opacity="0.7" />
+      <stop offset="20%" stop-color="#ffe600" />
+      <stop offset="50%" stop-color="#ff5500" />
+      <stop offset="85%" stop-color="#aa0022" stop-opacity="0.8" />
       <stop offset="100%" stop-color="#000000" stop-opacity="0" />
     </radialGradient>
 
-    <!-- Title Gradient -->
-    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#fff566" />
-      <stop offset="45%" stop-color="#ffb703" />
-      <stop offset="55%" stop-color="#fb8500" />
-      <stop offset="100%" stop-color="#d90429" />
+    <!-- Trackball 3D Sphere -->
+    <radialGradient id="trackballGrad" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="45%" stop-color="#e8e8ea" />
+      <stop offset="75%" stop-color="#9c9ca4" />
+      <stop offset="100%" stop-color="#46464e" />
+    </radialGradient>
+
+    <!-- Arcade Pushbuttons -->
+    <radialGradient id="redBtnGrad" cx="35%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ff8888" />
+      <stop offset="50%" stop-color="#e60000" />
+      <stop offset="100%" stop-color="#660000" />
+    </radialGradient>
+    <radialGradient id="blueBtnGrad" cx="35%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#88ccff" />
+      <stop offset="50%" stop-color="#0066cc" />
+      <stop offset="100%" stop-color="#002266" />
+    </radialGradient>
+    <radialGradient id="yellowBtnGrad" cx="35%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#ffffaa" />
+      <stop offset="50%" stop-color="#e6b800" />
+      <stop offset="100%" stop-color="#664d00" />
+    </radialGradient>
+
+    <!-- Coin Door Glow -->
+    <linearGradient id="coinGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff5500" />
+      <stop offset="100%" stop-color="#ff0000" />
     </linearGradient>
 
-    <linearGradient id="subTitleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#00f5d4" />
-      <stop offset="50%" stop-color="#00bbf9" />
-      <stop offset="100%" stop-color="#70d6ff" />
-    </linearGradient>
+    <!-- Scanline Pattern for CRT Screen -->
+    <pattern id="crtScanlines" width="100%" height="3" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="600" y2="0" stroke="#000000" stroke-width="1.0" opacity="0.32" />
+    </pattern>
   </defs>
 
-  <!-- Sky Background -->
-  <rect width="1200" height="480" fill="url(#skyGrad)" />
+  <!-- Arcade Room Background -->
+  <rect width="1200" height="620" fill="url(#arcadeHallGrad)" />
 
-  <!-- Stars Background -->
-  <g fill="#ffffff" opacity="0.6">
-    <circle cx="85" cy="45" r="1.2" />
-    <circle cx="160" cy="110" r="1.5" />
-    <circle cx="240" cy="65" r="1.0" />
-    <circle cx="310" cy="140" r="1.8" />
-    <circle cx="450" cy="50" r="1.2" />
-    <circle cx="580" cy="95" r="1.5" />
-    <circle cx="720" cy="40" r="1.0" />
-    <circle cx="840" cy="85" r="1.6" />
-    <circle cx="950" cy="120" r="1.2" />
-    <circle cx="1060" cy="55" r="1.5" />
-    <circle cx="1140" cy="90" r="1.0" />
-    <circle cx="120" cy="220" r="1.4" />
-    <circle cx="380" cy="240" r="1.2" />
-    <circle cx="780" cy="210" r="1.5" />
-    <circle cx="1020" cy="230" r="1.0" />
+  <!-- Ambient Neon Lighting in Background -->
+  <g filter="url(#intenseGlow)" opacity="0.45">
+    <ellipse cx="220" cy="180" rx="140" ry="180" fill="#3a0ca3" />
+    <ellipse cx="980" cy="180" rx="140" ry="180" fill="#7209b7" />
+    <ellipse cx="600" cy="300" rx="350" ry="240" fill="#4361ee" />
   </g>
 
-  <!-- CRT Scanline Overlay -->
-  <pattern id="scanlines" width="100%" height="4" patternUnits="userSpaceOnUse">
-    <line x1="0" y1="0" x2="1200" y2="0" stroke="#000000" stroke-width="1.2" opacity="0.25" />
-  </pattern>
-  <rect width="1200" height="480" fill="url(#scanlines)" pointer-events="none" />
+  <!-- Floor Grid (Arcade Carpet) -->
+  <path d="M 0,530 L 1200,530 L 1200,620 L 0,620 Z" fill="url(#floorGrad)" />
+  <g stroke="#3a0ca3" stroke-width="1.2" opacity="0.4">
+    <line x1="0" y1="550" x2="1200" y2="550" />
+    <line x1="0" y1="575" x2="1200" y2="575" />
+    <line x1="0" y1="605" x2="1200" y2="605" />
+    <!-- Radial floor lines -->
+    <line x1="600" y1="530" x2="100" y2="620" />
+    <line x1="600" y1="530" x2="320" y2="620" />
+    <line x1="600" y1="530" x2="520" y2="620" />
+    <line x1="600" y1="530" x2="680" y2="620" />
+    <line x1="600" y1="530" x2="880" y2="620" />
+    <line x1="600" y1="530" x2="1100" y2="620" />
+  </g>
 
-  <!-- Incoming ICBM Missile Trails (Red Neon) -->
+  <!-- CABINET SHADOW ON FLOOR -->
+  <ellipse cx="600" cy="565" rx="340" ry="45" fill="#000000" opacity="0.85" />
+
+  <!-- ==================== ARCADE CABINET STRUCTURE ==================== -->
+
+  <!-- Cabinet Outer Silhouette -->
+  <!-- Left Side Outer Wing -->
+  <path d="M 285,15 L 340,5 L 340,545 L 295,535 L 285,420 L 305,370 L 280,240 Z" fill="url(#cabSideLeft)" />
+  <!-- Left T-Molding Edge -->
+  <path d="M 285,15 L 340,5 L 340,545 L 295,535 L 285,420 L 305,370 L 280,240 Z" fill="none" stroke="url(#tMolding)" stroke-width="4" />
+
+  <!-- Right Side Outer Wing -->
+  <path d="M 915,15 L 860,5 L 860,545 L 905,535 L 915,420 L 895,370 L 920,240 Z" fill="url(#cabSideRight)" />
+  <!-- Right T-Molding Edge -->
+  <path d="M 915,15 L 860,5 L 860,545 L 905,535 L 915,420 L 895,370 L 920,240 Z" fill="none" stroke="url(#tMolding)" stroke-width="4" />
+
+  <!-- Cabinet Main Body (Center) -->
+  <rect x="338" y="5" width="524" height="540" fill="#15141a" />
+
+  <!-- Top Marquee Housing (Angled Hood) -->
+  <polygon points="338,5 862,5 848,70 352,70" fill="#0a0a0f" stroke="#222228" stroke-width="3" />
+  <!-- Marquee Glowing Graphic Panel -->
+  <rect x="356" y="10" width="488" height="54" rx="4" fill="#0e0a18" stroke="#332d44" stroke-width="2" />
+  <!-- Marquee Retro Ambient Backlight -->
   <g filter="url(#neonGlow)">
-    <line x1="80" y1="0" x2="280" y2="280" stroke="#ff2a2a" stroke-width="2.5" />
-    <line x1="280" y1="0" x2="420" y2="340" stroke="#ff3b30" stroke-width="2.5" />
-    <!-- MIRV Splitting Trails -->
-    <line x1="620" y1="0" x2="680" y2="150" stroke="#ff2a2a" stroke-width="3" />
-    <line x1="680" y1="150" x2="560" y2="380" stroke="#ff4757" stroke-width="2.2" stroke-dasharray="8,2" />
-    <line x1="680" y1="150" x2="720" y2="370" stroke="#ff4757" stroke-width="2.2" />
-    <line x1="680" y1="150" x2="820" y2="360" stroke="#ff4757" stroke-width="2.2" stroke-dasharray="8,2" />
-
-    <line x1="960" y1="0" x2="880" y2="300" stroke="#ff2a2a" stroke-width="2.5" />
-    <line x1="1120" y1="0" x2="980" y2="340" stroke="#ff3b30" stroke-width="2.5" />
+    <rect x="360" y="14" width="480" height="46" rx="3" fill="#1b1238" />
+    <!-- Abstract Retro Marquee Graphic Lines -->
+    <path d="M 370,50 L 440,22 L 520,38 L 600,18 L 680,38 L 760,22 L 830,50" fill="none" stroke="#ff0055" stroke-width="3" />
+    <path d="M 370,52 L 440,24 L 520,40 L 600,20 L 680,40 L 760,24 L 830,52" fill="none" stroke="#ffbb00" stroke-width="2" />
+    <circle cx="600" cy="20" r="8" fill="#ffffff" />
+    <circle cx="440" cy="24" r="5" fill="#00ffff" />
+    <circle cx="760" cy="24" r="5" fill="#00ffff" />
   </g>
 
-  <!-- Player ABM Defense Trails (Cyan / Blue Neon) -->
-  <g filter="url(#neonGlow)">
-    <!-- From Left Silo (120, 440) -->
-    <line x1="120" y1="440" x2="280" y2="280" stroke="#00d2ff" stroke-width="2.2" />
-    <!-- From Center Fast Silo (600, 440) -->
-    <line x1="600" y1="440" x2="520" y2="240" stroke="#3a86ff" stroke-width="3.2" />
-    <line x1="600" y1="440" x2="680" y2="180" stroke="#3a86ff" stroke-width="3.2" />
-    <line x1="600" y1="440" x2="880" y2="300" stroke="#3a86ff" stroke-width="3.2" />
-    <!-- From Right Silo (1080, 440) -->
-    <line x1="1080" y1="440" x2="980" y2="340" stroke="#00d2ff" stroke-width="2.2" />
+  <!-- Upper Bezel Speaker Grille Area -->
+  <rect x="350" y="70" width="500" height="30" fill="#08080c" />
+  <g fill="#000000">
+    <circle cx="480" cy="85" r="3" /> <circle cx="495" cy="85" r="3" /> <circle cx="510" cy="85" r="3" />
+    <circle cx="525" cy="85" r="3" /> <circle cx="540" cy="85" r="3" /> <circle cx="555" cy="85" r="3" />
+    <circle cx="645" cy="85" r="3" /> <circle cx="660" cy="85" r="3" /> <circle cx="675" cy="85" r="3" />
+    <circle cx="690" cy="85" r="3" /> <circle cx="705" cy="85" r="3" /> <circle cx="720" cy="85" r="3" />
   </g>
 
-  <!-- Explosions (Pulsing Concentric Plasma Clouds) -->
-  <g filter="url(#intenseGlow)">
-    <!-- Explosion 1 (Left-Center) -->
-    <circle cx="280" cy="280" r="55" fill="url(#expGrad1)" />
-    <circle cx="280" cy="280" r="42" fill="none" stroke="#ffff00" stroke-width="1.8" />
-    <circle cx="280" cy="280" r="28" fill="none" stroke="#ffffff" stroke-width="2.5" />
+  <!-- ==================== CRT MONITOR SECTION ==================== -->
 
-    <!-- Explosion 2 (High Center) -->
-    <circle cx="680" cy="180" r="75" fill="url(#expGrad2)" />
-    <circle cx="680" cy="180" r="58" fill="none" stroke="#00ffff" stroke-width="2.0" />
-    <circle cx="680" cy="180" r="35" fill="none" stroke="#ffffff" stroke-width="3.0" />
+  <!-- Outer Bezel Frame (Molded Plastic Housing) -->
+  <rect x="345" y="100" width="510" height="280" rx="14" fill="url(#bezelGrad)" stroke="#111116" stroke-width="5" />
+  <rect x="355" y="108" width="490" height="264" rx="10" fill="#050508" stroke="#1f1f28" stroke-width="2" />
 
-    <!-- Explosion 3 (Right Mid) -->
-    <circle cx="880" cy="300" r="62" fill="url(#expGrad3)" />
-    <circle cx="880" cy="300" r="48" fill="none" stroke="#ff8800" stroke-width="2.0" />
-    <circle cx="880" cy="300" r="30" fill="none" stroke="#ffffff" stroke-width="2.5" />
+  <!-- CRT Monitor Glass Screen (Recessed & Curved) -->
+  <rect id="crtScreen" x="375" y="122" width="450" height="236" rx="16" fill="#020208" />
+
+  <!-- Clip Path to keep game graphics inside CRT curvature -->
+  <clipPath id="crtClip">
+    <rect x="375" y="122" width="450" height="236" rx="16" />
+  </clipPath>
+
+  <!-- ==================== LIVE GAMEPLAY INSIDE CRT ==================== -->
+  <g clip-path="url(#crtClip)">
+    <!-- CRT Screen Sky Fill -->
+    <rect x="375" y="122" width="450" height="236" fill="#000000" />
+
+    <!-- Distant Space Stars -->
+    <g fill="#ffffff" opacity="0.7">
+      <circle cx="395" cy="140" r="0.9" /> <circle cx="430" cy="165" r="1.1" /> <circle cx="475" cy="135" r="0.8" />
+      <circle cx="520" cy="150" r="1.2" /> <circle cx="570" cy="130" r="0.9" /> <circle cx="615" cy="160" r="1.1" />
+      <circle cx="670" cy="140" r="0.8" /> <circle cx="715" cy="155" r="1.3" /> <circle cx="760" cy="135" r="0.9" />
+      <circle cx="800" cy="165" r="1.0" /> <circle cx="420" cy="200" r="0.8" /> <circle cx="770" cy="210" r="1.1" />
+    </g>
+
+    <!-- Incoming ICBM Trajectories (Neon Red) -->
+    <g filter="url(#neonGlow)">
+      <line x1="410" y1="122" x2="480" y2="250" stroke="#ff2222" stroke-width="1.8" />
+      <line x1="500" y1="122" x2="570" y2="280" stroke="#ff3333" stroke-width="1.8" />
+      
+      <!-- MIRV Splitters -->
+      <line x1="600" y1="122" x2="625" y2="185" stroke="#ff2222" stroke-width="2.2" />
+      <line x1="625" y1="185" x2="540" y2="330" stroke="#ff4444" stroke-width="1.6" stroke-dasharray="6,2" />
+      <line x1="625" y1="185" x2="650" y2="330" stroke="#ff4444" stroke-width="1.6" />
+      <line x1="625" y1="185" x2="710" y2="330" stroke="#ff4444" stroke-width="1.6" stroke-dasharray="6,2" />
+
+      <line x1="720" y1="122" x2="680" y2="245" stroke="#ff2222" stroke-width="1.8" />
+      <line x1="790" y1="122" x2="745" y2="275" stroke="#ff3333" stroke-width="1.8" />
+    </g>
+
+    <!-- Bomber Aircraft in Flight -->
+    <g transform="translate(425, 175) scale(1.1)" filter="url(#neonGlow)">
+      <path d="M0,4 L6,4 L9,1 L15,1 L17,4 L24,4 L22,7 L0,7 Z" fill="#ff3344" />
+      <polygon points="9,1 12,0 15,1" fill="#ffaa00" />
+    </g>
+
+    <!-- Satellite in Upper Orbit -->
+    <g transform="translate(735, 140) scale(1.0)" filter="url(#neonGlow)">
+      <rect x="6" y="2" width="8" height="8" fill="#00f0ff" />
+      <rect x="0" y="4" width="5" height="4" fill="#0088ff" />
+      <rect x="15" y="4" width="5" height="4" fill="#0088ff" />
+      <circle cx="10" cy="6" r="1.5" fill="#ffffff" />
+    </g>
+
+    <!-- Player Defending ABM Trails (Cyan & Deep Blue) -->
+    <g filter="url(#neonGlow)">
+      <!-- Left Silo (420, 335) -->
+      <line x1="420" y1="335" x2="480" y2="250" stroke="#00e5ff" stroke-width="1.6" />
+      <!-- Center Fast Delta Silo (600, 335) -->
+      <line x1="600" y1="335" x2="550" y2="220" stroke="#3d85c6" stroke-width="2.5" />
+      <line x1="600" y1="335" x2="625" y2="195" stroke="#3d85c6" stroke-width="2.5" />
+      <line x1="600" y1="335" x2="680" y2="245" stroke="#3d85c6" stroke-width="2.5" />
+      <!-- Right Silo (780, 335) -->
+      <line x1="780" y1="335" x2="745" y2="275" stroke="#00e5ff" stroke-width="1.6" />
+    </g>
+
+    <!-- Expanding Dynamic Color-Cycling Explosions -->
+    <g filter="url(#intenseGlow)">
+      <!-- Explosion 1 (Left) -->
+      <circle cx="480" cy="250" r="32" fill="url(#expGradWhiteYellow)" />
+      <circle cx="480" cy="250" r="23" fill="none" stroke="#ffee00" stroke-width="1.5" />
+      <circle cx="480" cy="250" r="14" fill="none" stroke="#ffffff" stroke-width="2.0" />
+
+      <!-- Explosion 2 (Center Mid-Air Intercept) -->
+      <circle cx="625" cy="195" r="44" fill="url(#expGradCyanBlue)" />
+      <circle cx="625" cy="195" r="32" fill="none" stroke="#00ffff" stroke-width="1.8" />
+      <circle cx="625" cy="195" r="18" fill="none" stroke="#ffffff" stroke-width="2.5" />
+
+      <!-- Explosion 3 (Right) -->
+      <circle cx="680" cy="245" r="36" fill="url(#expGradOrangeRed)" />
+      <circle cx="680" cy="245" r="25" fill="none" stroke="#ff7700" stroke-width="1.5" />
+      <circle cx="680" cy="245" r="15" fill="none" stroke="#ffffff" stroke-width="2.0" />
+    </g>
+
+    <!-- Aiming Crosshair ('X' cursor) -->
+    <g transform="translate(550, 220)" filter="url(#neonGlow)">
+      <line x1="-8" y1="-8" x2="8" y2="8" stroke="#ffffff" stroke-width="2" />
+      <line x1="-8" y1="8" x2="8" y2="-8" stroke="#ffffff" stroke-width="2" />
+      <circle cx="0" cy="0" r="2.5" fill="none" stroke="#00ffff" stroke-width="1" />
+    </g>
+
+    <!-- Yellow Ground Terrain & 3 Silo Mounds -->
+    <path d="
+      M 375,358 
+      L 375,338 
+      L 405,338 
+      L 412,330 L 428,330 L 435,338 
+      L 460,338 L 475,338 L 505,338 L 520,338 L 550,338 L 565,338 
+      L 588,338 L 594,328 L 606,328 L 612,338 
+      L 635,338 L 650,338 L 680,338 L 695,338 L 725,338 L 740,338 
+      L 765,338 L 772,330 L 788,330 L 795,338 
+      L 825,338 
+      L 825,358 Z" 
+      fill="#e4c424" 
+      stroke="#ffe14c" 
+      stroke-width="2" 
+    />
+
+    <!-- 6 Blue Defended Cities -->
+    <g fill="#2478f0">
+      <!-- City 1 -->
+      <path d="M 460,338 L 460,326 L 464,326 L 464,320 L 469,320 L 469,324 L 473,324 L 473,338 Z" />
+      <!-- City 2 -->
+      <path d="M 500,338 L 500,324 L 505,324 L 505,318 L 509,318 L 509,326 L 514,326 L 514,338 Z" />
+      <!-- City 3 -->
+      <path d="M 545,338 L 545,322 L 550,322 L 550,328 L 555,328 L 555,320 L 559,320 L 559,338 Z" />
+      <!-- City 4 -->
+      <path d="M 645,338 L 645,320 L 650,320 L 650,326 L 654,326 L 654,322 L 659,322 L 659,338 Z" />
+      <!-- City 5 -->
+      <path d="M 690,338 L 690,326 L 694,326 L 694,318 L 699,318 L 699,324 L 704,324 L 704,338 Z" />
+      <!-- City 6 -->
+      <path d="M 735,338 L 735,322 L 740,322 L 740,326 L 744,326 L 744,319 L 749,319 L 749,338 Z" />
+    </g>
+
+    <!-- 3 Silos Ammo Pyramids (Pixel Dots) -->
+    <!-- Left Silo Ammo -->
+    <g transform="translate(416, 332)" fill="#2478f0">
+      <rect x="0" y="3" width="2" height="2" /><rect x="3" y="3" width="2" height="2" /><rect x="6" y="3" width="2" height="2" />
+      <rect x="1.5" y="0" width="2" height="2" /><rect x="4.5" y="0" width="2" height="2" />
+      <rect x="3" y="-3" width="2" height="2" />
+    </g>
+    <!-- Center Silo Ammo -->
+    <g transform="translate(595, 329)" fill="#2478f0">
+      <rect x="0" y="4" width="2" height="2" /><rect x="3" y="4" width="2" height="2" /><rect x="6" y="4" width="2" height="2" /><rect x="9" y="4" width="2" height="2" />
+      <rect x="1.5" y="1" width="2" height="2" /><rect x="4.5" y="1" width="2" height="2" /><rect x="7.5" y="1" width="2" height="2" />
+      <rect x="3" y="-2" width="2" height="2" /><rect x="6" y="-2" width="2" height="2" />
+      <rect x="4.5" y="-5" width="2" height="2" />
+    </g>
+    <!-- Right Silo Ammo -->
+    <g transform="translate(776, 332)" fill="#2478f0">
+      <rect x="0" y="3" width="2" height="2" /><rect x="3" y="3" width="2" height="2" /><rect x="6" y="3" width="2" height="2" />
+      <rect x="1.5" y="0" width="2" height="2" /><rect x="4.5" y="0" width="2" height="2" />
+      <rect x="3" y="-3" width="2" height="2" />
+    </g>
+
+    <!-- CRT Scanlines Overlay -->
+    <rect x="375" y="122" width="450" height="236" fill="url(#crtScanlines)" pointer-events="none" />
+
+    <!-- CRT Curved Glass Glare & Reflection -->
+    <rect x="375" y="122" width="450" height="236" fill="url(#crtGlassGrad)" pointer-events="none" />
   </g>
 
-  <!-- Bomber Aircraft (Retro Silhouette) -->
-  <g transform="translate(180, 160) scale(2.2)" filter="url(#neonGlow)">
-    <path d="M0,6 L8,6 L12,2 L20,2 L22,6 L32,6 L30,9 L0,9 Z" fill="#ff4757" />
-    <polygon points="12,2 16,0 20,2" fill="#ffa502" />
-    <polygon points="8,9 12,13 18,9" fill="#ff4757" />
+  <!-- CRT Monitor Inner Border Specular Highlight -->
+  <rect x="375" y="122" width="450" height="236" rx="16" fill="none" stroke="#555566" stroke-width="2" opacity="0.6" />
+
+  <!-- ==================== CONTROL PANEL SECTION ==================== -->
+
+  <!-- Slanted Control Panel Surface -->
+  <polygon points="325,380 875,380 895,465 305,465" fill="#181820" stroke="#0a0a0f" stroke-width="3" />
+  <polygon points="332,384 868,384 886,460 314,460" fill="#20202a" stroke="#333342" stroke-width="1.5" />
+
+  <!-- Player 1 & Player 2 Start Buttons -->
+  <g transform="translate(370, 396)">
+    <circle cx="0" cy="0" r="10" fill="#111116" stroke="#444455" stroke-width="1.5" />
+    <circle cx="0" cy="0" r="7" fill="#ffffff" />
+    <circle cx="35" cy="0" r="10" fill="#111116" stroke="#444455" stroke-width="1.5" />
+    <circle cx="35" cy="0" r="7" fill="#ffffff" />
   </g>
 
-  <!-- Satellite (High Orbit) -->
-  <g transform="translate(920, 90) scale(2.0)" filter="url(#neonGlow)">
-    <rect x="10" y="4" width="12" height="12" fill="#00f5d4" />
-    <rect x="0" y="7" width="8" height="6" fill="#00bbf9" />
-    <rect x="24" y="7" width="8" height="6" fill="#00bbf9" />
-    <line x1="8" y1="10" x2="10" y2="10" stroke="#ffffff" stroke-width="1.5" />
-    <line x1="22" y1="10" x2="24" y2="10" stroke="#ffffff" stroke-width="1.5" />
-    <circle cx="16" cy="10" r="2.5" fill="#ffffff" />
-  </g>
+  <!-- Giant 3-Inch White Trackball Assembly -->
+  <!-- Metal Mounting Bezel -->
+  <circle cx="600" cy="425" r="32" fill="#111114" stroke="#555566" stroke-width="2.5" />
+  <circle cx="600" cy="425" r="28" fill="#1c1c22" />
+  <!-- Spherical Trackball -->
+  <circle cx="600" cy="425" r="24" fill="url(#trackballGrad)" />
+  <!-- Specular Reflection on Trackball -->
+  <ellipse cx="594" cy="415" rx="6" ry="3.5" fill="#ffffff" opacity="0.8" />
 
-  <!-- Crosshair (Arcade X Marker) -->
-  <g transform="translate(520, 240)" filter="url(#neonGlow)">
-    <line x1="-12" y1="-12" x2="12" y2="12" stroke="#ffffff" stroke-width="3" />
-    <line x1="-12" y1="12" x2="12" y2="-12" stroke="#ffffff" stroke-width="3" />
-    <circle cx="0" cy="0" r="4" fill="none" stroke="#00ffff" stroke-width="1.5" />
-  </g>
+  <!-- 3 Firing Buttons (Left Base, Center Base, Right Base) -->
+  <!-- Button 1 (Left - Red) -->
+  <circle cx="730" cy="422" r="14" fill="#111116" stroke="#444455" stroke-width="2" />
+  <circle cx="730" cy="422" r="11" fill="url(#redBtnGrad)" />
+  <ellipse cx="727" cy="418" rx="3.5" ry="2" fill="#ffffff" opacity="0.65" />
 
-  <!-- Terrain (Ground Silhouette with 3 Silos) -->
-  <path d="
-    M 0,480 
-    L 0,440 
-    L 70,440 
-    L 90,425 L 150,425 L 170,440 
-    L 230,440 L 250,440 L 330,440 L 350,440 L 430,440 L 450,440 
-    L 540,440 L 565,420 L 635,420 L 660,440 
-    L 740,440 L 760,440 L 840,440 L 860,440 L 940,440 L 960,440 
-    L 1030,440 L 1050,425 L 1110,425 L 1130,440 
-    L 1200,440 
-    L 1200,480 Z" 
-    fill="#e9c46a" 
-    stroke="#f4a261" 
-    stroke-width="3" 
-  />
+  <!-- Button 2 (Center - Blue) -->
+  <circle cx="770" cy="412" r="14" fill="#111116" stroke="#444455" stroke-width="2" />
+  <circle cx="770" cy="412" r="11" fill="url(#blueBtnGrad)" />
+  <ellipse cx="767" cy="408" rx="3.5" ry="2" fill="#ffffff" opacity="0.65" />
 
-  <!-- 6 Defended Cities -->
-  <!-- City 1 -->
-  <g transform="translate(235, 412)" fill="#00b4d8">
-    <rect x="0" y="10" width="8" height="18" />
-    <rect x="10" y="2" width="10" height="26" />
-    <rect x="22" y="6" width="12" height="22" />
-    <rect x="36" y="14" width="8" height="14" />
-  </g>
-  <!-- City 2 -->
-  <g transform="translate(335, 412)" fill="#00b4d8">
-    <rect x="0" y="6" width="10" height="22" />
-    <rect x="12" y="12" width="10" height="16" />
-    <rect x="24" y="0" width="8" height="28" />
-    <rect x="34" y="8" width="10" height="20" />
-  </g>
-  <!-- City 3 -->
-  <g transform="translate(435, 412)" fill="#00b4d8">
-    <rect x="0" y="8" width="12" height="20" />
-    <rect x="14" y="4" width="8" height="24" />
-    <rect x="24" y="10" width="12" height="18" />
-    <rect x="38" y="2" width="8" height="26" />
-  </g>
+  <!-- Button 3 (Right - Yellow) -->
+  <circle cx="810" cy="422" r="14" fill="#111116" stroke="#444455" stroke-width="2" />
+  <circle cx="810" cy="422" r="11" fill="url(#yellowBtnGrad)" />
+  <ellipse cx="807" cy="418" rx="3.5" ry="2" fill="#ffffff" opacity="0.65" />
 
-  <!-- City 4 -->
-  <g transform="translate(745, 412)" fill="#00b4d8">
-    <rect x="0" y="4" width="10" height="24" />
-    <rect x="12" y="10" width="12" height="18" />
-    <rect x="26" y="2" width="8" height="26" />
-    <rect x="36" y="12" width="10" height="16" />
-  </g>
-  <!-- City 5 -->
-  <g transform="translate(845, 412)" fill="#00b4d8">
-    <rect x="0" y="12" width="8" height="16" />
-    <rect x="10" y="0" width="10" height="28" />
-    <rect x="22" y="8" width="10" height="20" />
-    <rect x="34" y="4" width="10" height="24" />
-  </g>
-  <!-- City 6 -->
-  <g transform="translate(945, 412)" fill="#00b4d8">
-    <rect x="0" y="6" width="10" height="22" />
-    <rect x="12" y="2" width="12" height="26" />
-    <rect x="26" y="12" width="8" height="16" />
-    <rect x="36" y="8" width="8" height="20" />
-  </g>
+  <!-- ==================== LOWER CABINET & COIN DOOR ==================== -->
 
-  <!-- 3 Missile Silos Ammo Pyramids -->
-  <!-- Left Silo (Alpha) -->
-  <g transform="translate(112, 428)" fill="#2a9d8f">
-    <rect x="0" y="8" width="4" height="4" />
-    <rect x="6" y="8" width="4" height="4" />
-    <rect x="12" y="8" width="4" height="4" />
-    <rect x="3" y="2" width="4" height="4" />
-    <rect x="9" y="2" width="4" height="4" />
-    <rect x="6" y="-4" width="4" height="4" />
-  </g>
-  <!-- Center Silo (Delta - Fast) -->
-  <g transform="translate(588, 422)" fill="#e76f51">
-    <rect x="0" y="12" width="5" height="5" />
-    <rect x="8" y="12" width="5" height="5" />
-    <rect x="16" y="12" width="5" height="5" />
-    <rect x="24" y="12" width="5" height="5" />
-    <rect x="4" y="5" width="5" height="5" />
-    <rect x="12" y="5" width="5" height="5" />
-    <rect x="20" y="5" width="5" height="5" />
-    <rect x="8" y="-2" width="5" height="5" />
-    <rect x="16" y="-2" width="5" height="5" />
-    <rect x="12" y="-9" width="5" height="5" />
-  </g>
-  <!-- Right Silo (Omega) -->
-  <g transform="translate(1072, 428)" fill="#2a9d8f">
-    <rect x="0" y="8" width="4" height="4" />
-    <rect x="6" y="8" width="4" height="4" />
-    <rect x="12" y="8" width="4" height="4" />
-    <rect x="3" y="2" width="4" height="4" />
-    <rect x="9" y="2" width="4" height="4" />
-    <rect x="6" y="-4" width="4" height="4" />
-  </g>
+  <!-- Lower Cabinet Front Panel -->
+  <rect x="338" y="465" width="524" height="85" fill="#0d0d12" stroke="#1c1c24" stroke-width="2" />
 
-  <!-- Retro Arcade Marquee Typography -->
-  <g filter="url(#intenseGlow)">
-    <text x="600" y="82" 
-          text-anchor="middle" 
-          font-family="'Impact', 'Arial Black', sans-serif" 
-          font-size="64" 
-          font-weight="900" 
-          letter-spacing="10" 
-          fill="url(#titleGrad)" 
-          stroke="#000000" 
-          stroke-width="3">
-      MISSILE COMMAND
-    </text>
-  </g>
+  <!-- Metal Coin Door Frame -->
+  <rect x="490" y="475" width="220" height="70" rx="4" fill="#08080b" stroke="#33333d" stroke-width="2" />
+  
+  <!-- Left Coin Slot (25¢) -->
+  <rect x="520" y="485" width="40" height="48" rx="2" fill="#14141a" stroke="#2a2a34" stroke-width="1.5" />
+  <!-- Glowing Orange 25¢ Insert Button -->
+  <rect x="532" y="490" width="16" height="12" rx="1.5" fill="url(#coinGlow)" filter="url(#neonGlow)" />
+  <!-- Coin Return Pocket -->
+  <rect x="528" y="512" width="24" height="15" rx="1" fill="#050508" stroke="#22222a" stroke-width="1" />
 
-  <g filter="url(#neonGlow)">
-    <text x="600" y="122" 
-          text-anchor="middle" 
-          font-family="'Courier New', monospace, sans-serif" 
-          font-size="20" 
-          font-weight="700" 
-          letter-spacing="6" 
-          fill="url(#subTitleGrad)">
-      1980 ATARI ARCADE REPLICA • 4-CHANNEL POKEY SYNTHESIS
-    </text>
-  </g>
+  <!-- Right Coin Slot (25¢) -->
+  <rect x="640" y="485" width="40" height="48" rx="2" fill="#14141a" stroke="#2a2a34" stroke-width="1.5" />
+  <!-- Glowing Orange 25¢ Insert Button -->
+  <rect x="652" y="490" width="16" height="12" rx="1.5" fill="url(#coinGlow)" filter="url(#neonGlow)" />
+  <!-- Coin Return Pocket -->
+  <rect x="648" y="512" width="24" height="15" rx="1" fill="#050508" stroke="#22222a" stroke-width="1" />
 </svg>
