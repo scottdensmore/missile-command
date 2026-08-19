@@ -56,10 +56,12 @@ type Game struct {
 	Palette            Palette
 
 	// Wave Spawning Management
-	ICBMsRemaining int
-	SmartBombsLeft int
-	SpawnCooldown  int
-	FlierCooldown  int
+	ICBMsRemaining       int
+	SmartBombsLeft       int
+	SpawnCooldown        int
+	FlierCooldown        int
+	FlierSpawnedThisWave bool
+	WaveEndGraceTimer    int
 
 	// End-of-Wave Tally State
 	TallyPhase       int // 0: Ammo tally, 1: City tally, 2: Complete
@@ -153,6 +155,8 @@ func (g *Game) startWave(wave int) {
 	g.SmartBombsLeft = wdata.SmartBombs
 	g.SpawnCooldown = 45
 	g.FlierCooldown = wdata.FlierDelay
+	g.FlierSpawnedThisWave = false
+	g.WaveEndGraceTimer = 0
 
 	g.ICBMs = nil
 	g.SmartBombs = nil
@@ -494,39 +498,41 @@ func (g *Game) pickRandomTarget() Point {
 
 func (g *Game) updateFlier() {
 	if g.ActiveFlier == nil {
-		g.FlierCooldown--
-		if g.FlierCooldown <= 0 && (g.ICBMsRemaining > 0 || len(g.ICBMs) > 0) {
-			// Spawn Flier
-			ft := FlierBomber
-			alt := 65.0 + rand.Float64()*25.0
-			speed := 0.65 + float64(g.Wave)*0.06
-			if rand.Float64() < 0.45 {
-				ft = FlierSatellite
-				alt = 28.0 + rand.Float64()*18.0
-				speed = 0.85 + float64(g.Wave)*0.08
-			}
+		if !g.FlierSpawnedThisWave && g.ICBMsRemaining > 2 {
+			g.FlierCooldown--
+			if g.FlierCooldown <= 0 {
+				g.FlierSpawnedThisWave = true
+				ft := FlierBomber
+				alt := 65.0 + rand.Float64()*25.0
+				speed := 0.65 + float64(g.Wave)*0.06
+				if rand.Float64() < 0.45 {
+					ft = FlierSatellite
+					alt = 28.0 + rand.Float64()*18.0
+					speed = 0.85 + float64(g.Wave)*0.08
+				}
 
-			movingRight := rand.Float64() < 0.5
-			startX := -16.0
-			if !movingRight {
-				startX = SimWidth + 16.0
-				speed = -speed
-			}
+				movingRight := rand.Float64() < 0.5
+				startX := -16.0
+				if !movingRight {
+					startX = SimWidth + 16.0
+					speed = -speed
+				}
 
-			g.ActiveFlier = &Flier{
-				Type:           ft,
-				X:              startX,
-				Y:              alt,
-				Speed:          speed,
-				DropCooldown:   40 + rand.Intn(60),
-				BombsRemaining: 2 + rand.Intn(3),
-				Active:         true,
-			}
+				g.ActiveFlier = &Flier{
+					Type:           ft,
+					X:              startX,
+					Y:              alt,
+					Speed:          speed,
+					DropCooldown:   40 + rand.Intn(50),
+					BombsRemaining: 2,
+					Active:         true,
+				}
 
-			if ft == FlierBomber {
-				SetBomberSound(true)
-			} else {
-				SetSatelliteSound(true)
+				if ft == FlierBomber {
+					SetBomberSound(true)
+				} else {
+					SetSatelliteSound(true)
+				}
 			}
 		}
 		return
@@ -542,17 +548,15 @@ func (g *Game) updateFlier() {
 		g.ActiveFlier = nil
 		SetBomberSound(false)
 		SetSatelliteSound(false)
-		wdata := GetWaveData(g.Wave)
-		g.FlierCooldown = wdata.FlierDelay + rand.Intn(120)
 		return
 	}
 
 	// Dropping bombs from flier
-	if flier.BombsRemaining > 0 && flier.X >= 10 && flier.X <= SimWidth-10 {
+	if flier.BombsRemaining > 0 && flier.X >= 15 && flier.X <= SimWidth-15 {
 		flier.DropCooldown--
 		if flier.DropCooldown <= 0 {
 			flier.BombsRemaining--
-			flier.DropCooldown = 50 + rand.Intn(50)
+			flier.DropCooldown = 60 + rand.Intn(40)
 
 			target := g.pickRandomTarget()
 			wdata := GetWaveData(g.Wave)
@@ -623,7 +627,7 @@ func (g *Game) updateICBMs() {
 					IsSplitter: false,
 					Active:     true,
 				}
-				g.ICBMs = append(g.ICBMs, sister)
+				active = append(active, sister)
 			}
 		}
 
@@ -634,7 +638,7 @@ func (g *Game) updateICBMs() {
 		}
 
 		icbm.Progress += icbm.Speed / dist
-		if icbm.Progress >= 1.0 {
+		if icbm.Progress >= 1.0 || icbm.Curr.Y >= 216 {
 			icbm.Active = false
 			g.detonateThreatOnGround(icbm.Target)
 		} else {
@@ -676,9 +680,9 @@ func (g *Game) updateSmartBombs() {
 				length := math.Hypot(dx, dy)
 				if length > 0 {
 					steerX := (dx / length) * sb.Speed * 1.25
-					steerY := (dy / length) * sb.Speed * 0.40
 					sb.Curr.X += steerX
-					sb.Curr.Y += steerY
+					// Always ensure downward progress so it never gets stuck or floats upward
+					sb.Curr.Y += sb.Speed * 0.40
 				}
 				break
 			}
@@ -698,6 +702,9 @@ func (g *Game) updateSmartBombs() {
 				sb.Curr.Y += dirY * sb.Speed
 			}
 		}
+
+		// Clamp within playfield width
+		sb.Curr.X = math.Max(4, math.Min(SimWidth-4, sb.Curr.X))
 
 		// Detonate if hit ground
 		if sb.Curr.Y >= 216 {
@@ -883,17 +890,25 @@ func (g *Game) checkWaveCompletion() {
 		return
 	}
 
-	// Wave completes when no threats and no active player munitions remain
-	if g.ICBMsRemaining <= 0 && g.SmartBombsLeft <= 0 && len(g.ICBMs) == 0 &&
-		len(g.SmartBombs) == 0 && g.ActiveFlier == nil && len(g.ABMs) == 0 && len(g.Explosions) == 0 {
+	// Wave completes when no threats remain
+	noThreatsRemaining := g.ICBMsRemaining <= 0 && g.SmartBombsLeft <= 0 && len(g.ICBMs) == 0 &&
+		len(g.SmartBombs) == 0 && g.ActiveFlier == nil
 
-		StopAllContinuousSounds()
-		g.State = StateTally
-		g.TallyPhase = 0
-		g.TallyTimer = 30
-		g.TallyBatteryIdx = 0
-		g.TallyCityIdx = 0
-		g.TallyScoreEarned = 0
+	if noThreatsRemaining {
+		g.WaveEndGraceTimer++
+		// Transition once in-flight munitions finish, or force transition after 45 frames
+		if (len(g.ABMs) == 0 && len(g.Explosions) == 0) || g.WaveEndGraceTimer >= 45 {
+			StopAllContinuousSounds()
+			g.State = StateTally
+			g.TallyPhase = 0
+			g.TallyTimer = 30
+			g.TallyBatteryIdx = 0
+			g.TallyCityIdx = 0
+			g.TallyScoreEarned = 0
+			g.WaveEndGraceTimer = 0
+		}
+	} else {
+		g.WaveEndGraceTimer = 0
 	}
 }
 

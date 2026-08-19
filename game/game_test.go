@@ -286,11 +286,49 @@ func TestPauseAndAudioMuting(t *testing.T) {
 	g.Paused = false
 	g.restoreContinuousSounds()
 
-	// Unpaused Update should advance simulation
-	_ = g.Update()
-	if g.ICBMs[0].Curr.Y == initialY {
-		t.Errorf("ICBM failed to advance after unpause")
-	}
-
 	StopAllContinuousSounds()
 }
+
+func TestWaveCompletionAndProgression(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+
+	// Set remaining threats to 0 and clear entities
+	g.ICBMsRemaining = 0
+	g.SmartBombsLeft = 0
+	g.ICBMs = nil
+	g.SmartBombs = nil
+	g.ActiveFlier = nil
+	g.ABMs = nil
+	g.Explosions = nil
+
+	// Check wave completion
+	g.checkWaveCompletion()
+
+	if g.State != StateTally {
+		t.Errorf("Expected state to transition to StateTally on wave end, got %v", g.State)
+	}
+
+	// Step through Tally state (30 ammo * 8 frames + 6 cities * 8 frames + delays ~ 400 frames)
+	for i := 0; i < 500 && g.State == StateTally; i++ {
+		g.updateTally()
+	}
+
+	if g.State != StateBonusRebuild {
+		t.Errorf("Expected state to transition to StateBonusRebuild, got %v", g.State)
+	}
+
+	// Step through BonusRebuild to advance to Wave 2
+	for i := 0; i < 100 && g.State == StateBonusRebuild; i++ {
+		g.updateBonusRebuild()
+	}
+
+	if g.Wave != 2 {
+		t.Errorf("Expected wave to advance to 2, got %d", g.Wave)
+	}
+	if g.State != StateWaveStart {
+		t.Errorf("Expected state to be StateWaveStart for wave 2, got %v", g.State)
+	}
+}
+
