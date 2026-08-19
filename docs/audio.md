@@ -49,7 +49,6 @@ graph LR
 | :--- | :--- | :---: |
 | **ABM Rocket Launch** | Linear POKEY AUDF frequency sweep from `$20` (~970 Hz) down to `$E0` (~142 Hz) with 4-bit quantized DAC decay. | 0.28s |
 | **Explosion Rumble** | Heavy sub-bass foundation (68Hz down to 32Hz) layered with 17-bit LFSR polynomial noise down-sweep (240Hz to 55Hz). | 1.05s |
-| **Bonus Tally Chirp** | Crisp 1520 Hz (`AUDF=$14`) square wave pulse per remaining missile and surviving city counted. | 32ms |
 | **Wave Start Klaxon** | 9 Hz alternating dual-tone siren between 780 Hz (`AUDF=$28`) and 520 Hz (`AUDF=$3D`). | 1.25s |
 | **Silo Low Alarm** | Fast dual-tone warning (1032 Hz followed by 516 Hz) when a silo reaches $\le 3$ missiles. | 80ms |
 | **Can't Fire Buzzer** | Low 226 Hz square wave combined with 5-bit/4-bit poly distortion when clicking an empty or ruined base. | 110ms |
