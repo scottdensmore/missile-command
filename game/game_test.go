@@ -286,6 +286,12 @@ func TestPauseAndAudioMuting(t *testing.T) {
 	g.Paused = false
 	g.restoreContinuousSounds()
 
+	// Unpaused Update should advance simulation
+	_ = g.Update()
+	if g.ICBMs[0].Curr.Y == initialY {
+		t.Errorf("ICBM failed to advance after unpause")
+	}
+
 	StopAllContinuousSounds()
 }
 
@@ -310,6 +316,7 @@ func TestWaveCompletionAndProgression(t *testing.T) {
 		t.Errorf("Expected state to transition to StateTally on wave end, got %v", g.State)
 	}
 
+	StopAllContinuousSounds()
 	// Step through Tally state (30 ammo * 8 frames + 6 cities * 8 frames + delays ~ 400 frames)
 	for i := 0; i < 500 && g.State == StateTally; i++ {
 		g.updateTally()
@@ -331,4 +338,106 @@ func TestWaveCompletionAndProgression(t *testing.T) {
 		t.Errorf("Expected state to be StateWaveStart for wave 2, got %v", g.State)
 	}
 }
+
+func TestFullGameLifecycle(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+
+	// Simulate Wave Start
+	g.State = StateWaveStart
+	for g.State == StateWaveStart {
+		_ = g.Update()
+	}
+
+	if g.State != StatePlaying {
+		t.Fatalf("Expected state to transition from WaveStart to Playing, got %v", g.State)
+	}
+
+	// Aim and fire across multiple silos
+	g.Crosshair.Pos = Point{X: 128, Y: 100}
+	g.fireABM(0) // Left
+	g.fireABM(1) // Center
+	g.fireABM(2) // Right
+
+	if len(g.ABMs) != 3 {
+		t.Errorf("Expected 3 in-flight ABMs, got %d", len(g.ABMs))
+	}
+
+	// Advance frames until ABMs detonate into explosions
+	for i := 0; i < 60 && len(g.ABMs) > 0; i++ {
+		_ = g.Update()
+	}
+
+	if len(g.Explosions) == 0 {
+		t.Errorf("Expected active explosions from detonated ABMs, got 0")
+	}
+
+	// Test Annihilation -> The End -> High Score Entry
+	for i := range g.Cities {
+		g.Cities[i].Destroyed = true
+	}
+	g.checkWaveCompletion()
+
+	if g.State != StateTheEnd {
+		t.Fatalf("Expected state to transition to StateTheEnd on annihilation, got %v", g.State)
+	}
+
+	// Step through The End sequence
+	for i := 0; i < 250 && g.State == StateTheEnd; i++ {
+		_ = g.Update()
+	}
+
+	if g.State != StateHighScoreEntry && g.State != StateAttract {
+		t.Errorf("Expected state to transition from The End, got %v", g.State)
+	}
+}
+
+func TestAudioSynthesisIntegrity(t *testing.T) {
+	InitAudio()
+
+	pcms := map[string][]byte{
+		"launch":    launchPCM,
+		"explosion": explosionPCM,
+		"tally":     tallyPCM,
+		"siren":     sirenPCM,
+		"siloLow":   siloLowPCM,
+		"cantFire":  cantFirePCM,
+		"bonusCity": bonusCityPCM,
+		"gameOver":  gameOverPCM,
+		"bomber":    bomberPCM,
+		"sat":       satPCM,
+		"smartBomb": smartBombPCM,
+	}
+
+	for name, buf := range pcms {
+		if len(buf) == 0 {
+			t.Errorf("Audio PCM buffer %s is empty!", name)
+		}
+		if len(buf)%2 != 0 {
+			t.Errorf("Audio PCM buffer %s length (%d) is not an even number of 16-bit bytes!", name, len(buf))
+		}
+	}
+}
+
+func TestCrosshairAndInputClamping(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+
+	// Test extreme out-of-bounds crosshair positions
+	g.Crosshair.Pos = Point{X: -500, Y: -500}
+	g.handleCrosshairInput()
+
+	if g.Crosshair.Pos.X < 4 || g.Crosshair.Pos.Y < 8 {
+		t.Errorf("Crosshair min clamping failed: pos = %+v", g.Crosshair.Pos)
+	}
+
+	g.Crosshair.Pos = Point{X: 1000, Y: 1000}
+	g.handleCrosshairInput()
+
+	if g.Crosshair.Pos.X > SimWidth-4 || g.Crosshair.Pos.Y > 206 {
+		t.Errorf("Crosshair max clamping failed: pos = %+v", g.Crosshair.Pos)
+	}
+}
+
 
