@@ -48,3 +48,7 @@ jobs:
 
       - name: Build Binary
         run: go build -v -o missile-command${{ runner.os == 'Windows' && '.exe' || '' }} .
+
+      - name: Build WebAssembly Target
+        if: runner.os == 'Linux'
+        run: GOOS=js GOARCH=wasm go build -v -o /dev/null .

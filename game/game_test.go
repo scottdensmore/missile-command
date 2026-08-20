@@ -1,6 +1,8 @@
 package game
 
 import (
+	"math"
+	"path/filepath"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -122,6 +124,10 @@ func TestSmartBombEvasion(t *testing.T) {
 }
 
 func TestHighScores(t *testing.T) {
+	tempFile := filepath.Join(t.TempDir(), "test_highscores.json")
+	SetCustomHighScorePath(tempFile)
+	defer SetCustomHighScorePath("")
+
 	hs := DefaultHighScores()
 	if len(hs.Entries) != 10 {
 		t.Fatalf("Expected 10 default high score entries, got %d", len(hs.Entries))
@@ -138,6 +144,12 @@ func TestHighScores(t *testing.T) {
 	}
 	if len(hs.Entries) != 10 {
 		t.Errorf("High score list should remain capped at 10, got %d", len(hs.Entries))
+	}
+
+	// Verify persistence reload from disk
+	reloaded := LoadHighScores()
+	if reloaded.Entries[0].Initials != "NEW" || reloaded.Entries[0].Score != 99999 {
+		t.Errorf("Reloaded high scores mismatch: %+v", reloaded.Entries[0])
 	}
 }
 
@@ -440,4 +452,129 @@ func TestCrosshairAndInputClamping(t *testing.T) {
 	}
 }
 
+func TestCityPlacementAndSiloSeparation(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
 
+	siloBases := [][2]float64{
+		{18 - 13, 18 + 13},   // Left silo mound: [5, 31]
+		{128 - 13, 128 + 13}, // Middle silo mound: [115, 141]
+		{238 - 13, 238 + 13}, // Right silo mound: [225, 251]
+	}
+
+	cityWidth := 16.0
+
+	// Check each city does not overlap with any silo
+	for i, city := range g.Cities {
+		cityLeft := city.Position.X
+		cityRight := city.Position.X + cityWidth
+
+		for sIdx, silo := range siloBases {
+			siloLeft := silo[0]
+			siloRight := silo[1]
+
+			if cityLeft < siloRight && cityRight > siloLeft {
+				t.Errorf("City %d [%.1f, %.1f] overlaps with silo %d [%.1f, %.1f]",
+					i, cityLeft, cityRight, sIdx, siloLeft, siloRight)
+			}
+		}
+	}
+
+	// Verify equal 9px spacing and centering in valleys
+	expectedXs := []float64{40, 65, 90, 150, 175, 200}
+	for i, expX := range expectedXs {
+		if g.Cities[i].Position.X != expX {
+			t.Errorf("City %d X position = %.1f, expected %.1f", i, g.Cities[i].Position.X, expX)
+		}
+	}
+
+	// Verify symmetry across screen center (128.0)
+	for i := 0; i < 3; i++ {
+		leftCity := g.Cities[i]
+		rightCity := g.Cities[5-i]
+
+		leftDist := 128.0 - (leftCity.Position.X + cityWidth/2.0)
+		rightDist := (rightCity.Position.X + cityWidth/2.0) - 128.0
+
+		if math.Abs(leftDist-rightDist) > 1e-6 {
+			t.Errorf("Asymmetry between city %d (center %.1f) and city %d (center %.1f)",
+				i, leftCity.Position.X+cityWidth/2.0, 5-i, rightCity.Position.X+cityWidth/2.0)
+		}
+	}
+}
+
+func TestAttractModeAndDemoTransitions(t *testing.T) {
+	g := NewGame()
+	if g.State != StateAttract {
+		t.Fatalf("Expected initial state to be StateAttract, got %v", g.State)
+	}
+	if g.AttractDemoMode {
+		t.Error("Attract mode should start in high scores screen, not demo mode")
+	}
+
+	// Trigger demo mode transition
+	g.AttractTimer = 1
+	g.updateAttract()
+
+	if !g.AttractDemoMode {
+		t.Error("Expected AttractDemoMode to become true after AttractTimer expires")
+	}
+	if g.Wave != 1 || g.Batteries[0].Ammo != 10 {
+		t.Errorf("Demo mode did not initialize wave 1: wave=%d, ammo=%d", g.Wave, g.Batteries[0].Ammo)
+	}
+
+	// Step a few demo simulation frames
+	for i := 0; i < 30; i++ {
+		g.updateAttractDemo()
+	}
+
+	// Verify Draw handles demo mode without panic
+	screen := ebiten.NewImage(256, 231)
+	g.Draw(screen)
+
+	// Stop demo mode
+	g.stopAttractDemo()
+	if g.AttractDemoMode {
+		t.Error("Expected AttractDemoMode to become false after stopAttractDemo")
+	}
+}
+
+func TestMasterVolumeAndMute(t *testing.T) {
+	InitAudio()
+
+	SetMasterVolume(1.0)
+	if math.Abs(GetMasterVolume()-1.0) > 1e-6 {
+		t.Errorf("Expected volume 1.0, got %f", GetMasterVolume())
+	}
+
+	AdjustVolume(-0.2)
+	if math.Abs(GetMasterVolume()-0.8) > 1e-6 {
+		t.Errorf("Expected volume 0.8, got %f", GetMasterVolume())
+	}
+
+	// Test bounds clamping
+	AdjustVolume(-2.0)
+	if GetMasterVolume() < 0.0 {
+		t.Errorf("Volume below 0: %f", GetMasterVolume())
+	}
+
+	AdjustVolume(2.0)
+	if GetMasterVolume() > 1.0 {
+		t.Errorf("Volume above 1.0: %f", GetMasterVolume())
+	}
+
+	// Test mute toggle
+	if IsMuted() {
+		ToggleMute() // ensure unmuted
+	}
+
+	muted := ToggleMute()
+	if !muted || !IsMuted() {
+		t.Error("Expected mute to be active")
+	}
+
+	unmuted := ToggleMute()
+	if unmuted || IsMuted() {
+		t.Error("Expected mute to be inactive")
+	}
+}

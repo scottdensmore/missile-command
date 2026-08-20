@@ -35,7 +35,77 @@ var (
 	smartBombPlayer *audio.Player
 	sirenPlayer     *audio.Player
 	audioMu         sync.Mutex
+
+	// Master volume & mute
+	masterVolume float64 = 1.0
+	isMuted      bool    = false
 )
+
+// SetMasterVolume sets the global audio output volume (clamped between 0.0 and 1.0).
+func SetMasterVolume(v float64) {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	if v < 0.0 {
+		v = 0.0
+	} else if v > 1.0 {
+		v = 1.0
+	}
+	masterVolume = v
+	updateLoopingVolumesLocked()
+}
+
+// GetMasterVolume returns the current global audio output volume.
+func GetMasterVolume() float64 {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	return masterVolume
+}
+
+// ToggleMute toggles sound output mute on or off.
+func ToggleMute() bool {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	isMuted = !isMuted
+	updateLoopingVolumesLocked()
+	return isMuted
+}
+
+// IsMuted returns true if sound output is currently muted.
+func IsMuted() bool {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	return isMuted
+}
+
+// AdjustVolume increases or decreases global volume by delta and returns the new level.
+func AdjustVolume(delta float64) float64 {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	masterVolume += delta
+	if masterVolume < 0.0 {
+		masterVolume = 0.0
+	} else if masterVolume > 1.0 {
+		masterVolume = 1.0
+	}
+	updateLoopingVolumesLocked()
+	return masterVolume
+}
+
+func updateLoopingVolumesLocked() {
+	volScale := masterVolume
+	if isMuted {
+		volScale = 0.0
+	}
+	if bomberPlayer != nil {
+		bomberPlayer.SetVolume(0.16 * volScale)
+	}
+	if satPlayer != nil {
+		satPlayer.SetVolume(0.14 * volScale)
+	}
+	if smartBombPlayer != nil {
+		smartBombPlayer.SetVolume(0.18 * volScale)
+	}
+}
 
 // InitAudio initializes the audio context and synthesizes all POKEY waveforms.
 func InitAudio() {
@@ -63,7 +133,14 @@ func InitAudio() {
 }
 
 func playSoundSafe(buf []byte, vol float64) {
-	if audioContext == nil || buf == nil {
+	audioMu.Lock()
+	effectiveVol := vol * masterVolume
+	if isMuted {
+		effectiveVol = 0.0
+	}
+	audioMu.Unlock()
+
+	if audioContext == nil || buf == nil || effectiveVol <= 0.0 {
 		return
 	}
 	defer func() {
@@ -71,7 +148,7 @@ func playSoundSafe(buf []byte, vol float64) {
 	}()
 	p := audioContext.NewPlayerFromBytes(buf)
 	if p != nil {
-		p.SetVolume(vol)
+		p.SetVolume(effectiveVol)
 		p.Play()
 	}
 }

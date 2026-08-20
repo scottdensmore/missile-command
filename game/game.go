@@ -83,6 +83,15 @@ type Game struct {
 	CharSelectIdx int
 	Letters       []rune
 
+	// Attract Mode & AI Demo
+	AttractDemoMode bool
+	AttractTimer    int
+	AIDemoShootTick int
+
+	// On-screen HUD Notification
+	NotificationText  string
+	NotificationTimer int
+
 	// Mouse, Pause and Input
 	PrevMouseX, PrevMouseY int
 	MouseCaptured          bool
@@ -104,11 +113,26 @@ func NewGame() *Game {
 		Score:              0,
 		NextBonusThreshold: 10000,
 		Letters:            []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ.!- 0123456789"),
+		AttractDemoMode:    false,
+		AttractTimer:       600, // 10 seconds Great Scores display before AI demo
 	}
 
 	g.Crosshair.Pos = Point{X: SimWidth / 2, Y: SimHeight / 2}
 	g.Palette = GetPaletteForWave(1)
 	return g
+}
+
+func (g *Game) enterAttractMode() {
+	g.Paused = false
+	StopAllContinuousSounds()
+	g.State = StateAttract
+	g.AttractDemoMode = false
+	g.AttractTimer = 600
+}
+
+func (g *Game) showNotification(msg string) {
+	g.NotificationText = msg
+	g.NotificationTimer = 90
 }
 
 // StartGame starts a fresh 1-player game.
@@ -120,7 +144,9 @@ func StartGame(g *Game) {
 	g.Palette = GetPaletteForWave(1)
 
 	// Rebuild all 6 cities
-	cityXs := []float64{42, 64, 86, 170, 192, 214}
+	// Left valley: [31, 115] -> cities at X: 40, 65, 90 (9px margins & gaps)
+	// Right valley: [141, 225] -> cities at X: 150, 175, 200 (9px margins & gaps)
+	cityXs := []float64{40, 65, 90, 150, 175, 200}
 	for i, x := range cityXs {
 		g.Cities[i] = City{
 			Position:  Point{X: x, Y: 216},
@@ -187,20 +213,75 @@ func (g *Game) Update() error {
 		g.MouseCaptured = false
 	}
 
+	// CRT Filter Toggle (F1 / Tab)
+	if inpututil.IsKeyJustPressed(ebiten.KeyF1) || inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		g.pipeline.UseCRT = !g.pipeline.UseCRT
+		if g.pipeline.UseCRT {
+			g.showNotification("CRT SHADER: ON")
+		} else {
+			g.showNotification("CRT SHADER: OFF")
+		}
+	}
+
+	// Fullscreen Toggle (F11 / Alt+Enter)
+	if inpututil.IsKeyJustPressed(ebiten.KeyF11) ||
+		(inpututil.IsKeyJustPressed(ebiten.KeyEnter) && (ebiten.IsKeyPressed(ebiten.KeyAlt) || ebiten.IsKeyPressed(ebiten.KeyAltRight) || ebiten.IsKeyPressed(ebiten.KeyAltLeft))) {
+		isFull := !ebiten.IsFullscreen()
+		ebiten.SetFullscreen(isFull)
+		if isFull {
+			g.showNotification("FULLSCREEN")
+		} else {
+			g.showNotification("WINDOWED")
+		}
+	}
+
+	// Sound Mute Toggle (M Key)
+	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
+		muted := ToggleMute()
+		if muted {
+			g.showNotification("SOUND: MUTED")
+		} else {
+			g.showNotification(fmt.Sprintf("SOUND: %d%%", int(GetMasterVolume()*100)))
+		}
+	}
+
+	// Volume Adjust (- / +)
+	if inpututil.IsKeyJustPressed(ebiten.KeyMinus) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadSubtract) {
+		vol := AdjustVolume(-0.1)
+		g.showNotification(fmt.Sprintf("VOL: %d%%", int(vol*100)))
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEqual) || inpututil.IsKeyJustPressed(ebiten.KeyNumpadAdd) {
+		vol := AdjustVolume(0.1)
+		g.showNotification(fmt.Sprintf("VOL: %d%%", int(vol*100)))
+	}
+
+	if g.NotificationTimer > 0 {
+		g.NotificationTimer--
+	}
+
 	// Quit / Exit Handling (Q Key)
 	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
 		if g.State == StateAttract {
 			return ebiten.Termination
 		}
 		// Return to attract mode from game/pause
-		g.Paused = false
-		StopAllContinuousSounds()
-		g.State = StateAttract
+		g.enterAttractMode()
 		return nil
 	}
 
-	// Pause / Resume Toggle (P Key)
-	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+	// Pause / Resume Toggle (P Key or Gamepad Start in game)
+	isPausePressed := inpututil.IsKeyJustPressed(ebiten.KeyP)
+	if !isPausePressed && g.State != StateAttract && g.State != StateHighScoreEntry {
+		ids := ebiten.AppendGamepadIDs(nil)
+		for _, id := range ids {
+			if ebiten.IsStandardGamepadLayoutAvailable(id) && inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonCenterRight) {
+				isPausePressed = true
+				break
+			}
+		}
+	}
+
+	if isPausePressed {
 		if g.State != StateAttract && g.State != StateHighScoreEntry {
 			g.Paused = !g.Paused
 			if g.Paused {
@@ -258,13 +339,178 @@ func (g *Game) restoreContinuousSounds() {
 
 // --- STATE UPDATES ---
 
-func (g *Game) updateAttract() {
-	// Start game on Left Click, Space, 1, or Enter
+func (g *Game) checkAnyStartInput() bool {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) ||
 		inpututil.IsKeyJustPressed(ebiten.KeySpace) ||
 		inpututil.IsKeyJustPressed(ebiten.Key1) ||
 		inpututil.IsKeyJustPressed(ebiten.KeyEnter) {
+		return true
+	}
+	ids := ebiten.AppendGamepadIDs(nil)
+	for _, id := range ids {
+		if ebiten.IsStandardGamepadLayoutAvailable(id) {
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonCenterRight) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightBottom) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightRight) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightLeft) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightTop) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (g *Game) updateAttract() {
+	if g.checkAnyStartInput() {
 		StartGame(g)
+		return
+	}
+
+	if g.AttractDemoMode {
+		g.updateAttractDemo()
+	} else {
+		g.AttractTimer--
+		if g.AttractTimer <= 0 {
+			g.startAttractDemo()
+		}
+	}
+}
+
+func (g *Game) startAttractDemo() {
+	g.AttractDemoMode = true
+	g.AttractTimer = 900 // 15 seconds demo
+	g.AIDemoShootTick = 0
+
+	g.Wave = 1
+	g.Score = 0
+	g.Palette = GetPaletteForWave(1)
+	wdata := GetWaveData(1)
+	g.ICBMsRemaining = wdata.TotalICBMs
+	g.SmartBombsLeft = wdata.SmartBombs
+	g.SpawnCooldown = 25
+	g.FlierCooldown = 120
+	g.FlierSpawnedThisWave = false
+	g.WaveEndGraceTimer = 0
+
+	g.ICBMs = nil
+	g.SmartBombs = nil
+	g.ActiveFlier = nil
+	g.ABMs = nil
+	g.Explosions = nil
+	StopAllContinuousSounds()
+
+	cityXs := []float64{40, 65, 90, 150, 175, 200}
+	for i, x := range cityXs {
+		g.Cities[i] = City{
+			Position:  Point{X: x, Y: 216},
+			Destroyed: false,
+		}
+	}
+	g.resetSilos()
+}
+
+func (g *Game) updateAttractDemo() {
+	g.AttractTimer--
+	if g.AttractTimer <= 0 {
+		g.stopAttractDemo()
+		return
+	}
+
+	// 1. Spawning
+	g.updateSpawning()
+	// 2. Fliers
+	g.updateFlier()
+	// 3. ABMs
+	g.updateABMs()
+	// 4. ICBMs
+	g.updateICBMs()
+	// 5. SmartBombs
+	g.updateSmartBombs()
+	// 6. Explosions
+	g.updateExplosions()
+	// 7. Collisions
+	g.checkCollisions()
+
+	// 8. AI Player Logic
+	g.updateAIDemoPlayer()
+
+	// Check if all cities destroyed or wave ends
+	survivingCities := 0
+	for _, city := range g.Cities {
+		if !city.Destroyed {
+			survivingCities++
+		}
+	}
+	if survivingCities == 0 {
+		g.stopAttractDemo()
+		return
+	}
+}
+
+func (g *Game) stopAttractDemo() {
+	StopAllContinuousSounds()
+	g.AttractDemoMode = false
+	g.AttractTimer = 600
+}
+
+func (g *Game) updateAIDemoPlayer() {
+	var bestTarget *Point
+	var lowestY float64 = -1.0
+
+	for _, icbm := range g.ICBMs {
+		if icbm.Active && icbm.Curr.Y > 25 && icbm.Curr.Y < 175 && icbm.Curr.Y > lowestY {
+			intercept := Point{
+				X: icbm.Curr.X + (icbm.Target.X-icbm.Curr.X)*0.25,
+				Y: icbm.Curr.Y + 28,
+			}
+			bestTarget = &intercept
+			lowestY = icbm.Curr.Y
+		}
+	}
+
+	for _, sb := range g.SmartBombs {
+		if sb.Active && sb.Curr.Y > 25 && sb.Curr.Y < 175 && sb.Curr.Y > lowestY {
+			intercept := Point{
+				X: sb.Curr.X,
+				Y: sb.Curr.Y + 22,
+			}
+			bestTarget = &intercept
+			lowestY = sb.Curr.Y
+		}
+	}
+
+	if bestTarget == nil && g.ActiveFlier != nil && g.ActiveFlier.Active {
+		fPos := Point{X: g.ActiveFlier.X + 8 + g.ActiveFlier.Speed*20, Y: g.ActiveFlier.Y}
+		bestTarget = &fPos
+	}
+
+	if bestTarget != nil {
+		g.Crosshair.Pos.X += (bestTarget.X - g.Crosshair.Pos.X) * 0.18
+		g.Crosshair.Pos.Y += (bestTarget.Y - g.Crosshair.Pos.Y) * 0.18
+
+		// Clamp
+		g.Crosshair.Pos.X = math.Max(4, math.Min(SimWidth-4, g.Crosshair.Pos.X))
+		g.Crosshair.Pos.Y = math.Max(8, math.Min(206, g.Crosshair.Pos.Y))
+
+		g.AIDemoShootTick++
+		if g.AIDemoShootTick >= 35 {
+			g.AIDemoShootTick = 0
+			targetX := g.Crosshair.Pos.X
+			siloIdx := 1
+			if targetX < 90 && !g.Batteries[0].Destroyed && g.Batteries[0].Ammo > 0 {
+				siloIdx = 0
+			} else if targetX > 166 && !g.Batteries[2].Destroyed && g.Batteries[2].Ammo > 0 {
+				siloIdx = 2
+			} else if g.Batteries[1].Destroyed || g.Batteries[1].Ammo == 0 {
+				if !g.Batteries[0].Destroyed && g.Batteries[0].Ammo > 0 {
+					siloIdx = 0
+				} else if !g.Batteries[2].Destroyed && g.Batteries[2].Ammo > 0 {
+					siloIdx = 2
+				}
+			}
+			g.fireABM(siloIdx)
+		}
 	}
 }
 
@@ -339,6 +585,35 @@ func (g *Game) handleCrosshairInput() {
 		g.Crosshair.Pos.Y += speed
 	}
 
+	// Gamepad analog stick & D-pad
+	ids := ebiten.AppendGamepadIDs(nil)
+	for _, id := range ids {
+		if ebiten.IsStandardGamepadLayoutAvailable(id) {
+			lx := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickHorizontal)
+			ly := ebiten.StandardGamepadAxisValue(id, ebiten.StandardGamepadAxisLeftStickVertical)
+			deadzone := 0.18
+			if math.Abs(lx) > deadzone {
+				g.Crosshair.Pos.X += lx * 3.5
+			}
+			if math.Abs(ly) > deadzone {
+				g.Crosshair.Pos.Y += ly * 3.5
+			}
+
+			if ebiten.IsStandardGamepadButtonPressed(id, ebiten.StandardGamepadButtonLeftLeft) {
+				g.Crosshair.Pos.X -= speed
+			}
+			if ebiten.IsStandardGamepadButtonPressed(id, ebiten.StandardGamepadButtonLeftRight) {
+				g.Crosshair.Pos.X += speed
+			}
+			if ebiten.IsStandardGamepadButtonPressed(id, ebiten.StandardGamepadButtonLeftTop) {
+				g.Crosshair.Pos.Y -= speed
+			}
+			if ebiten.IsStandardGamepadButtonPressed(id, ebiten.StandardGamepadButtonLeftBottom) {
+				g.Crosshair.Pos.Y += speed
+			}
+		}
+	}
+
 	// Clamp within playfield (cannot aim below ground line Y=210)
 	g.Crosshair.Pos.X = math.Max(4, math.Min(SimWidth-4, g.Crosshair.Pos.X))
 	g.Crosshair.Pos.Y = math.Max(8, math.Min(206, g.Crosshair.Pos.Y))
@@ -364,6 +639,25 @@ func (g *Game) handleFiringInput() {
 			firedIdx = 1
 		} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 			firedIdx = 2
+		}
+	}
+
+	// Gamepad buttons (Left Silo: LB/LT/A, Center Silo: X/Y, Right Silo: RB/RT/B)
+	ids := ebiten.AppendGamepadIDs(nil)
+	for _, id := range ids {
+		if ebiten.IsStandardGamepadLayoutAvailable(id) {
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonFrontTopLeft) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonFrontBottomLeft) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightBottom) {
+				firedIdx = 0
+			} else if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightLeft) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightTop) {
+				firedIdx = 1
+			} else if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonFrontTopRight) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonFrontBottomRight) ||
+				inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightRight) {
+				firedIdx = 2
+			}
 		}
 	}
 
@@ -1203,6 +1497,11 @@ func (g *Game) drawHUD(target *ebiten.Image) {
 		multStr := fmt.Sprintf("%dX", g.Palette.Multiplier)
 		DrawArcadeText(target, multStr, 220, 8, g.Palette.MultiplierColor)
 	}
+
+	// On-screen notification (e.g. CRT ON/OFF, SOUND 80%, FULLSCREEN)
+	if g.NotificationTimer > 0 {
+		DrawArcadeText(target, g.NotificationText, 128-len(g.NotificationText)*4, 22, yellow)
+	}
 }
 
 func (g *Game) drawTerrain(target *ebiten.Image) {
@@ -1256,6 +1555,84 @@ func (g *Game) drawAttractScreen(target *ebiten.Image) {
 	yellow := color.RGBA{R: 240, G: 220, B: 32, A: 255}
 	cyan := color.RGBA{R: 40, G: 220, B: 240, A: 255}
 	red := color.RGBA{R: 240, G: 40, B: 40, A: 255}
+
+	if g.AttractDemoMode {
+		// 1. Draw Terrain Ground Profile
+		g.drawTerrain(target)
+
+		// 2. Draw Cities
+		for _, city := range g.Cities {
+			DrawCity(target, int(city.Position.X), int(city.Position.Y), city.Destroyed, g.Palette.CityColor)
+		}
+
+		// 3. Draw Silos
+		for _, bat := range g.Batteries {
+			g.drawSilo(target, bat)
+		}
+
+		// 4. Draw ICBM Trails
+		for _, icbm := range g.ICBMs {
+			if !icbm.Active {
+				continue
+			}
+			vector.StrokeLine(target, float32(icbm.Start.X), float32(icbm.Start.Y), float32(icbm.Curr.X), float32(icbm.Curr.Y), 1.0, g.Palette.ICBMColor, false)
+			target.Set(int(icbm.Curr.X), int(icbm.Curr.Y), white)
+		}
+
+		// 5. Draw Smart Bombs
+		for _, sb := range g.SmartBombs {
+			if !sb.Active {
+				continue
+			}
+			vector.StrokeLine(target, float32(sb.Start.X), float32(sb.Start.Y), float32(sb.Curr.X), float32(sb.Curr.Y), 1.0, red, false)
+			DrawSmartBomb(target, int(sb.Curr.X)-4, int(sb.Curr.Y)-4, sb.AnimTick/6, yellow)
+		}
+
+		// 6. Draw Fliers
+		if g.ActiveFlier != nil && g.ActiveFlier.Active {
+			flier := g.ActiveFlier
+			if flier.Type == FlierBomber {
+				DrawBomber(target, int(flier.X), int(flier.Y), flier.Speed > 0, g.Palette.ICBMColor)
+			} else {
+				DrawSatellite(target, int(flier.X), int(flier.Y), g.Palette.ICBMColor)
+			}
+		}
+
+		// 7. Draw ABMs
+		for _, abm := range g.ABMs {
+			if !abm.Active {
+				continue
+			}
+			vector.StrokeLine(target, float32(abm.Start.X), float32(abm.Start.Y), float32(abm.Curr.X), float32(abm.Curr.Y), 1.0, g.Palette.ABMColor, false)
+			DrawArcadeText(target, "X", int(abm.Target.X)-4, int(abm.Target.Y)-4, white)
+		}
+
+		// 8. Draw Explosions
+		for _, exp := range g.Explosions {
+			if exp.State == StateDead {
+				continue
+			}
+			col := GetExplosionColor(exp.Tick)
+			vector.DrawFilledCircle(target, float32(exp.Center.X), float32(exp.Center.Y), float32(exp.Radius), col, false)
+			if exp.Radius > 5.0 {
+				vector.DrawFilledCircle(target, float32(exp.Center.X), float32(exp.Center.Y), float32(exp.Radius*0.4), white, false)
+			}
+		}
+
+		// 9. Draw Crosshair
+		cx := int(g.Crosshair.Pos.X)
+		cy := int(g.Crosshair.Pos.Y)
+		DrawArcadeText(target, "X", cx-4, cy-4, white)
+
+		// 10. Authentic Arcade Demo Overlays
+		DrawArcadeText(target, "GAME OVER", 92, 40, red)
+		DrawArcadeText(target, "DEFEND CITIES", 76, 55, yellow)
+		DrawArcadeText(target, "DEMO MODE", 92, 70, cyan)
+		if (g.Tick/30)%2 == 0 {
+			DrawArcadeText(target, "PRESS SPACE OR CLICK", 48, 90, white)
+		}
+		return
+	}
 
 	DrawArcadeText(target, "MISSILE COMMAND", 68, 30, yellow)
 	DrawArcadeText(target, "DEFEND CITIES", 76, 45, red)

@@ -8,16 +8,20 @@ This document outlines the controls, input handling options, and strategic gamep
 
 <div align="center">
 
-| Action | Primary Input | Keyboard Equivalent |
-| :--- | :--- | :--- |
-| **Start Game** | `Left Click` on Title Screen | `Space` / `1` / `Enter` |
-| **Aim Crosshair** | `Mouse Movement` | `Arrow Keys` (Up/Down/Left/Right) |
-| **Fire Left Base (Alpha)** | `Left Mouse Button` | `A` or `1` |
-| **Fire Center Base (Delta - Fast)** | `Middle Mouse Button` / `Space` | `S` or `2` |
-| **Fire Right Base (Omega)** | `Right Mouse Button` | `D` or `3` |
-| **Pause / Resume** | **`P`** | **`P`** |
-| **Quit Game / Exit** | **`Q`** | **`Q`** |
-| **Release Mouse Cursor** | **`Escape`** | **`Escape`** |
+| Action | Primary Input | Keyboard Equivalent | Gamepad |
+| :--- | :--- | :--- | :--- |
+| **Start Game** | `Left Click` on Title Screen | `Space` / `1` / `Enter` | `Start` / `A` / `Cross` |
+| **Aim Crosshair** | `Mouse Movement` | `Arrow Keys` (Up/Down/Left/Right) | `Left Stick` / `D-Pad` |
+| **Fire Left Base (Alpha)** | `Left Mouse Button` | `A` or `1` | `LB` / `LT` / `A` (Bottom action) |
+| **Fire Center Base (Delta - Fast)** | `Middle Mouse Button` / `Space` | `S` or `2` | `X` / `Y` (Left/Top action) |
+| **Fire Right Base (Omega)** | `Right Mouse Button` | `D` or `3` | `RB` / `RT` / `B` (Right action) |
+| **Toggle CRT Scanlines** | **`F1` / `Tab`** | **`F1` / `Tab`** | — |
+| **Toggle Fullscreen** | **`F11` / `Alt+Enter`** | **`F11` / `Alt+Enter`** | — |
+| **Mute / Unmute Audio** | **`M`** | **`M`** | — |
+| **Adjust Audio Volume** | **`-` / `+`** | **`-` / `+`** (or `Numpad -/+`) | — |
+| **Pause / Resume** | **`P`** | **`P`** | `Start` / `Options` |
+| **Quit Game / Exit** | **`Q`** | **`Q`** | — |
+| **Release Mouse Cursor** | **`Escape`** | **`Escape`** | — |
 
 </div>
 

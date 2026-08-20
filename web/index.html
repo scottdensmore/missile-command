@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Missile Command (1980 Atari Arcade Replica)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #0a0a10;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+      color: #f0dc20;
+      text-shadow: 0 0 10px rgba(240, 220, 32, 0.4);
+      margin-bottom: 4px;
+    }
+    p.subtitle {
+      font-size: 0.85rem;
+      color: #38e0b4;
+      letter-spacing: 1px;
+    }
+    #game-container {
+      position: relative;
+      background: #000;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(36, 100, 240, 0.2);
+      border: 2px solid #222;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 1024px;
+      width: 100%;
+      aspect-ratio: 1024 / 924;
+    }
+    #loading {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: #f0dc20;
+      font-size: 1rem;
+      letter-spacing: 1px;
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid rgba(240, 220, 32, 0.2);
+      border-top-color: #f0dc20;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    footer {
+      margin-top: 16px;
+      max-width: 800px;
+      width: 100%;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+    .controls-panel {
+      background: #12131c;
+      border: 1px solid #282a3a;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px 16px;
+      margin-top: 8px;
+    }
+    .control-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .key-badge {
+      background: #202230;
+      border: 1px solid #3c4058;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      color: #f0dc20;
+      font-family: monospace;
+    }
+    .footer-credits {
+      text-align: center;
+      color: #666;
+      font-size: 0.75rem;
+      margin-top: 8px;
+    }
+    .footer-credits a {
+      color: #38e0b4;
+      text-decoration: none;
+    }
+    .footer-credits a:hover {
+      text-decoration: underline;
+    }
+  </style>
+  <script src="wasm_exec.js"></script>
+</head>
+<body>
+  <header>
+    <h1>MISSILE COMMAND</h1>
+    <p class="subtitle">1980 ATARI ARCADE REPLICA</p>
+  </header>
+
+  <main id="game-container">
+    <div id="loading">
+      <div class="spinner"></div>
+      <span>SYNTHESIZING POKEY AUDIO & SIMULATION...</span>
+    </div>
+  </main>
+
+  <footer>
+    <div class="controls-panel">
+      <strong>Arcade Controls Guide:</strong>
+      <div class="controls-grid">
+        <div class="control-item"><span>Aim Crosshair</span> <span class="key-badge">Mouse / Arrows</span></div>
+        <div class="control-item"><span>Left Base (Alpha)</span> <span class="key-badge">Left Click / A / 1</span></div>
+        <div class="control-item"><span>Center Base (Delta Fast)</span> <span class="key-badge">Middle Click / Space / S</span></div>
+        <div class="control-item"><span>Right Base (Omega)</span> <span class="key-badge">Right Click / D / 3</span></div>
+        <div class="control-item"><span>Toggle CRT Shaders</span> <span class="key-badge">F1 / Tab</span></div>
+        <div class="control-item"><span>Toggle Fullscreen</span> <span class="key-badge">F11 / Alt+Enter</span></div>
+        <div class="control-item"><span>Mute Audio</span> <span class="key-badge">M</span></div>
+        <div class="control-item"><span>Adjust Volume</span> <span class="key-badge">- / +</span></div>
+        <div class="control-item"><span>Pause / Resume</span> <span class="key-badge">P</span></div>
+        <div class="control-item"><span>Quit to Title</span> <span class="key-badge">Q</span></div>
+      </div>
+    </div>
+    <div class="footer-credits">
+      Pure Go &amp; Ebitengine &bull; Discrete 4-Channel POKEY Sound Synthesis &bull; <a href="https://github.com/scottdensmore/missile-command" target="_blank" rel="noreferrer">GitHub Repository</a>
+    </div>
+  </footer>
+
+  <script>
+    if (!WebAssembly.instantiateStreaming) {
+      WebAssembly.instantiateStreaming = async (resp, importObject) => {
+        const source = await (await resp).arrayBuffer();
+        return await WebAssembly.instantiate(source, importObject);
+      };
+    }
+
+    const go = new Go();
+    const loadingElem = document.getElementById('loading');
+
+    WebAssembly.instantiateStreaming(fetch('missile-command.wasm'), go.importObject).then(result => {
+      if (loadingElem) {
+        loadingElem.style.display = 'none';
+      }
+      go.run(result.instance);
+    }).catch(err => {
+      console.error('Failed to load WebAssembly application:', err);
+      if (loadingElem) {
+        loadingElem.innerHTML = '<span style="color:#f02020;">Failed to load WebAssembly binary. Please ensure missile-command.wasm is built.</span>';
+      }
+    });
+  </script>
+</body>
+</html>
