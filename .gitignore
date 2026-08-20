@@ -1,0 +1,51 @@
+# Binaries and executable outputs
+/missile-command
+/missile-command-*
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries and profiles
+*.test
+*.out
+*.prof
+coverage.out
+cover.out
+profile.out
+
+# Build output directories
+/bin/
+/dist/
+/build/
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Dependency directories (uncomment if not committing vendor)
+# /vendor/
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.fleet/
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
