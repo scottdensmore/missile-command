@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Isolated test fixtures for high score storage.
   - Pruned deprecated legacy stroke font.
   - Symmetrical valley city placement with clearance and spacing unit tests.
+- **Professional Multi-Platform Application Icon & macOS Packaging**:
+  - Apple macOS Human Interface Guidelines (HIG) continuous-curvature squircle grid with brushed titanium bezel, specular rim highlight, and dual-layer ambient/directional elevation shadow.
+  - Light & Dark mode contrast optimization for light desktop backgrounds and dark mode Docks.
+  - Native Apple Icon Image container (`assets/icon.icns`) with 10 Retina and standard densities.
+  - Multi-resolution Windows Icon (`assets/icon.ico`) spanning 16×16 to 256×256.
+  - Linux Freedesktop icon suite in `assets/icons/icon-*.png`.
+  - Theme-aware WebAssembly web favicons (`web/favicon.ico`, `web/favicon-light.png`, `web/favicon-dark.png`, `web/apple-touch-icon.png`).
+  - Runtime desktop window and taskbar/dock icon integration via embedded `assets.GetWindowIcons()` and `ebiten.SetWindowIcon()`.
+  - Standalone double-clickable macOS application bundle packaging script in `scripts/bundle-macos.sh`.
 
 ---
 
