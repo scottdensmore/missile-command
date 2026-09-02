@@ -3,7 +3,9 @@ package game
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"sort"
+	"sync"
 )
 
 // ScoreEntry represents an arcade high score entry with 3-letter initials.
@@ -17,7 +19,33 @@ type HighScores struct {
 	Entries []ScoreEntry `json:"entries"`
 }
 
-const HighScoreFile = "highscores.json"
+var (
+	customHighScorePath string
+	scoreMu             sync.RWMutex
+)
+
+// SetCustomHighScorePath sets a custom path for loading/saving high scores (useful for testing).
+func SetCustomHighScorePath(p string) {
+	scoreMu.Lock()
+	defer scoreMu.Unlock()
+	customHighScorePath = p
+}
+
+// GetHighScoreFilePath resolves the target high score file path in the user config directory.
+func GetHighScoreFilePath() string {
+	scoreMu.RLock()
+	defer scoreMu.RUnlock()
+	if customHighScorePath != "" {
+		return customHighScorePath
+	}
+
+	configDir, err := os.UserConfigDir()
+	if err == nil && configDir != "" {
+		return filepath.Join(configDir, "missile-command", "highscores.json")
+	}
+
+	return "highscores.json"
+}
 
 // DefaultHighScores returns the classic Atari Missile Command default high score table.
 func DefaultHighScores() *HighScores {
@@ -39,7 +67,15 @@ func DefaultHighScores() *HighScores {
 
 // LoadHighScores loads scores from disk, falling back to defaults if not found.
 func LoadHighScores() *HighScores {
-	data, err := os.ReadFile(HighScoreFile)
+	targetPath := GetHighScoreFilePath()
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		// If user config file doesn't exist, check local default highscores.json template
+		if targetPath != "highscores.json" {
+			data, err = os.ReadFile("highscores.json")
+		}
+	}
+
 	if err != nil {
 		hs := DefaultHighScores()
 		_ = hs.Save()
@@ -62,7 +98,14 @@ func (hs *HighScores) Save() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(HighScoreFile, data, 0644)
+
+	targetPath := GetHighScoreFilePath()
+	dir := filepath.Dir(targetPath)
+	if dir != "." && dir != "" {
+		_ = os.MkdirAll(dir, 0755)
+	}
+
+	return os.WriteFile(targetPath, data, 0644)
 }
 
 // IsHighScore checks if a given score qualifies for the top 10 list.

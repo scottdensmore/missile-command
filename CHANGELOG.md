@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-08-20
+
+### Added
+- **Attract Mode Simulated AI Defense**:
+  - Live automated AI demo gameplay cycling with the Great Scores screen during attract mode.
+  - Automated intercept tracking, predictive firing from optimal silos, and authentic arcade `"DEMO MODE"` overlay.
+- **Arcade Controls, Hotkeys & Notifications**:
+  - Full Gamepad & Controller support (analog stick aiming, D-Pad, shoulder triggers, and action button firing).
+  - Quick hotkeys: `F1` / `Tab` CRT scanline shader toggle, `F11` / `Alt+Enter` fullscreen toggle, `M` sound mute toggle, and `-` / `+` global volume adjustments.
+  - Non-intrusive on-screen HUD notification banners for all hotkey settings.
+- **WebAssembly (WASM) Web Port**:
+  - Pure WebAssembly build support (`GOOS=js GOARCH=wasm`) with automated compilation script in `scripts/build-wasm.sh`.
+  - Retro arcade-styled web runner and loader page in `web/index.html` with responsive aspect-ratio scaling and audio auto-resume.
+- **Hygiene & High Score Storage Isolation**:
+  - User high score persistence in `os.UserConfigDir()` (`~/.config/missile-command/highscores.json`), preventing repository file pollution during local play.
+  - Isolated test fixtures for high score storage.
+  - Pruned deprecated legacy stroke font.
+  - Symmetrical valley city placement with clearance and spacing unit tests.
+
+---
+
 ## [1.0.0] - 2026-08-17
 
 ### Added

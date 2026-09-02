@@ -264,30 +264,40 @@ func DrawBonusCityIcon(target *ebiten.Image, x, y int, col color.RGBA) {
 }
 
 // DrawAmmoPyramid draws the 10-missile pyramid (4, 3, 2, 1) for a battery.
-// centerX is the center pixel column of the battery, baseY is the bottom row.
+// centerX is the center pixel column of the battery, baseY is the bottom row Y.
 func DrawAmmoPyramid(target *ebiten.Image, centerX, baseY int, ammo int, col color.RGBA) {
-	// 10 missiles positions in pyramid:
-	// Row 0 (bottom, 4 missiles): offsets -3, -1, +1, +3 at baseY
-	// Row 1 (3 missiles): offsets -2, 0, +2 at baseY - 3
-	// Row 2 (2 missiles): offsets -1, +1 at baseY - 6
-	// Row 3 (1 missile): offset 0 at baseY - 9
-	type dotPos struct {
-		dx, dy int
+	type missilePos struct {
+		x, y int
 	}
-	positions := []dotPos{
-		{-3, 0}, {-1, 0}, {1, 0}, {3, 0}, // row 0
-		{-2, -3}, {0, -3}, {2, -3}, // row 1
-		{-1, -6}, {1, -6}, // row 2
-		{0, -9}, // row 3
+	// 10 missile positions ordered from bottom tier to top apex:
+	// Row 0 (bottom 4): Y = baseY
+	// Row 1 (middle 3): Y = baseY - 4
+	// Row 2 (upper 2):  Y = baseY - 8
+	// Row 3 (apex 1):   Y = baseY - 12
+	positions := []missilePos{
+		// Row 0: Bottom 4 missiles (indices 0..3)
+		{centerX - 6, baseY},
+		{centerX - 2, baseY},
+		{centerX + 2, baseY},
+		{centerX + 6, baseY},
+		// Row 1: Middle 3 missiles (indices 4..6)
+		{centerX - 4, baseY - 4},
+		{centerX, baseY - 4},
+		{centerX + 4, baseY - 4},
+		// Row 2: Upper 2 missiles (indices 7..8)
+		{centerX - 2, baseY - 8},
+		{centerX + 2, baseY - 8},
+		// Row 3: Apex 1 missile (index 9)
+		{centerX, baseY - 12},
 	}
 
 	for i := 0; i < ammo && i < len(positions); i++ {
-		px := centerX + positions[i].dx*2
-		py := baseY + positions[i].dy
-		// Draw a 2x2 missile pixel marker
+		mx := positions[i].x
+		my := positions[i].y
+		// Draw 2x3 missile sprite (needle)
 		for ox := 0; ox < 2; ox++ {
-			for oy := 0; oy < 2; oy++ {
-				target.Set(px+ox, py+oy, col)
+			for oy := 0; oy < 3; oy++ {
+				target.Set(mx+ox, my+oy, col)
 			}
 		}
 	}

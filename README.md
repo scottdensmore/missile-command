@@ -14,7 +14,7 @@
 
 <br/>
 
-**Defend six cities from an escalating nuclear barrage.**  
+**Defend six cities from an escalating nuclear barrage.**
 A feature-complete, byte-for-byte authentic recreation of Dave Theurer's legendary 1980 Atari arcade masterpiece.
 
 [Quick Start](#-quick-start) • [Controls](#-controls) • [Documentation](#-documentation) • [Releases](https://github.com/scottdensmore/missile-command/releases)
@@ -63,16 +63,20 @@ go build -o missile-command .
 
 <div align="center">
 
-| Action | Primary Input | Keyboard Alternative |
-| :--- | :--- | :--- |
-| **Start Game** | `Left Click` on Title Screen | `Space` / `1` / `Enter` |
-| **Aim Crosshair** | `Mouse Movement` (Trackball feel) | `Arrow Keys` |
-| **Fire Left Base (Alpha)** | `Left Mouse Button` | `A` or `1` |
-| **Fire Center Base (Delta - Fast Launcher)** | `Middle Mouse Button` / `Space` | `S` or `2` |
-| **Fire Right Base (Omega)** | `Right Mouse Button` | `D` or `3` |
-| **Pause / Resume** | **`P`** | **`P`** |
-| **Quit Game / Exit** | **`Q`** | **`Q`** |
-| **Release Mouse Cursor** | **`Escape`** | **`Escape`** |
+| Action | Primary Input | Keyboard | Gamepad |
+| :--- | :--- | :--- | :--- |
+| **Start Game** | `Left Click` on Title Screen | `Space` / `1` / `Enter` | `Start` / `A` / `Cross` |
+| **Aim Crosshair** | `Mouse Movement` | `Arrow Keys` | `Left Stick` / `D-Pad` |
+| **Fire Left Base (Alpha)** | `Left Mouse Button` | `A` or `1` | `LB` / `LT` / `A` (Bottom action) |
+| **Fire Center Base (Delta - Fast)** | `Middle Mouse Button` / `Space` | `S` or `2` | `X` / `Y` (Left/Top action) |
+| **Fire Right Base (Omega)** | `Right Mouse Button` | `D` or `3` | `RB` / `RT` / `B` (Right action) |
+| **Toggle CRT Scanlines** | **`F1` / `Tab`** | **`F1` / `Tab`** | — |
+| **Toggle Fullscreen** | **`F11` / `Alt+Enter`** | **`F11` / `Alt+Enter`** | — |
+| **Mute / Unmute** | **`M`** | **`M`** | — |
+| **Adjust Volume** | **`-` / `+`** | **`-` / `+`** | — |
+| **Pause / Resume** | **`P`** | **`P`** | `Start` |
+| **Quit Game / Exit** | **`Q`** | **`Q`** | — |
+| **Release Mouse Cursor** | **`Escape`** | **`Escape`** | — |
 
 </div>
 
@@ -82,19 +86,19 @@ go build -o missile-command .
 
 Explore the detailed technical documentation and game guides:
 
-* 🔊 **[Atari POKEY Audio Synthesizer (`docs/audio.md`)](docs/audio.md)**  
+* 🔊 **[Atari POKEY Audio Synthesizer (`docs/audio.md`)](docs/audio.md)**
   Discrete 4-channel sound synthesis, polynomial noise LFSR algorithms (poly4, poly5, poly17), event sound effects, and continuous ambient tones.
 
-* 📊 **[Attack Wave Guide & Color Palettes (`docs/wave-guide.md`)](docs/wave-guide.md)**  
+* 📊 **[Attack Wave Guide & Color Palettes (`docs/wave-guide.md`)](docs/wave-guide.md)**
   Complete wave tables, scoring multipliers ($1\times$ to $6\times$), 10 cycling wave color RAM combinations, smart bomb evasion mechanics, and bonus city replenishment.
 
-* 🎯 **[Controls & Strategic Firing Guide (`docs/controls.md`)](docs/controls.md)**  
+* 🎯 **[Controls & Strategic Firing Guide (`docs/controls.md`)](docs/controls.md)**
   Comprehensive firing mechanics, the strategic value of the fast Delta center silo ($7.5\times$ velocity), and ammunition conservation tactics.
 
-* 🏛️ **[Technical Architecture & Pipeline (`docs/architecture.md`)](docs/architecture.md)**  
+* 🏛️ **[Technical Architecture & Pipeline (`docs/architecture.md`)](docs/architecture.md)**
   Software design, 256×231 native raster framebuffer pipeline, aspect-ratio letterboxing, Kage CRT scanline shaders, and game state machine.
 
-* 📜 **[Changelog & Release Notes (`CHANGELOG.md`)](CHANGELOG.md)**  
+* 📜 **[Changelog & Release Notes (`CHANGELOG.md`)](CHANGELOG.md)**
   Full version history and release notes.
 
 ---
