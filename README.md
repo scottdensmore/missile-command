@@ -50,12 +50,25 @@ go run .
 # Or build the binary
 go build -o missile-command .
 ./missile-command
+
+# Or package a standalone macOS .app bundle
+bash scripts/bundle-macos.sh
+open "Missile Command.app"
 ```
 
 > **Linux Users**: Ensure audio and OpenGL libraries are installed:
 > ```bash
 > sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev
 > ```
+
+### 3. Application Icons & Multi-Platform Support
+Missile Command features a custom, high-resolution application icon engineered to conform strictly to **Apple macOS Human Interface Guidelines (HIG)**:
+* **macOS**: Native `assets/icon.icns` packaging with Retina densities (16×16 up to 1024×1024) inside an 824×824 continuous-curvature squircle grid, brushed titanium bezel, and dual-layer elevation shadow.
+* **Light & Dark Mode**: Optimized for high contrast against both bright wallpapers and dark macOS Docks / theme bars.
+* **Windows**: Multi-resolution `assets/icon.ico` (16, 32, 48, 64, 128, 256).
+* **Linux**: Freedesktop icon assets in `assets/icons/icon-*.png`.
+* **Web**: Theme-aware `web/favicon.ico`, `web/favicon-light.png`, and `web/favicon-dark.png` (`prefers-color-scheme`).
+* **Desktop Runtime**: Multi-size icons decoded and registered dynamically at launch via `ebiten.SetWindowIcon()`.
 
 ---
 
