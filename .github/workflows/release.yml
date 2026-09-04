@@ -223,13 +223,25 @@ jobs:
       # -------------------------------------------------------------
       # WINDOWS AMD64 BUILD & PACKAGE
       # -------------------------------------------------------------
-      - name: Build Windows Binary & Archive
+      - name: Install Inno Setup
+        if: matrix.target == 'windows-amd64'
+        run: choco install innosetup --no-progress
+
+      - name: Build Windows Binary, Installer & Archive
         if: matrix.target == 'windows-amd64'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
           go build -ldflags="-s -w" -o dist/missile-command-windows-amd64.exe .
+
+          # Compile Inno Setup Installer
+          $iscc = Get-Command iscc.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
+          if (-not $iscc) {
+              $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          }
+          & $iscc "/DAppVersion=${{ needs.prepare-release.outputs.version }}" "/DBinaryPath=dist\missile-command-windows-amd64.exe" scripts/setup-windows.iss
           
+          # Create Portable ZIP Package
           New-Item -ItemType Directory -Force -Path dist/package-windows
           Copy-Item dist/missile-command-windows-amd64.exe dist/package-windows/missile-command.exe
           Copy-Item assets/icon.ico dist/package-windows/

@@ -7,7 +7,7 @@ CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
-VERSION="${1:-1.1.0}"
+VERSION="${1:-1.2.0}"
 BIN_SRC="${2:-}"
 
 echo "📦 Bundling ${APP_NAME} v${VERSION} for macOS..."
