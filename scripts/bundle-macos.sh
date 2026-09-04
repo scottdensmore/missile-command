@@ -7,14 +7,22 @@ CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
-echo "📦 Bundling ${APP_NAME} for macOS..."
+VERSION="${1:-1.1.0}"
+BIN_SRC="${2:-}"
+
+echo "📦 Bundling ${APP_NAME} v${VERSION} for macOS..."
 
 rm -rf "${APP_DIR}"
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 
-# Build binary
-echo "  🔨 Compiling binary..."
-go build -ldflags="-s -w" -o "${MACOS_DIR}/missile-command" .
+# Build or copy binary
+if [ -n "${BIN_SRC}" ]; then
+    echo "  📋 Installing binary from ${BIN_SRC}..."
+    cp "${BIN_SRC}" "${MACOS_DIR}/missile-command"
+else
+    echo "  🔨 Compiling binary..."
+    go build -ldflags="-s -w" -o "${MACOS_DIR}/missile-command" .
+fi
 
 # Ensure icon.icns exists
 if [ ! -f "assets/icon.icns" ]; then
@@ -44,9 +52,9 @@ cat <<EOF > "${CONTENTS_DIR}/Info.plist"
     <key>CFBundleIdentifier</key>
     <string>com.scottdensmore.missile-command</string>
     <key>CFBundleVersion</key>
-    <string>1.1.0</string>
+    <string>${VERSION}</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>${VERSION}</string>
     <key>CFBundleExecutable</key>
     <string>missile-command</string>
     <key>CFBundleIconFile</key>
