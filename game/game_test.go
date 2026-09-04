@@ -2,11 +2,24 @@ package game
 
 import (
 	"math"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
+
+func TestMain(m *testing.M) {
+	tempSettings := filepath.Join(os.TempDir(), "missile_command_test_settings.json")
+	_ = os.Remove(tempSettings)
+	SetCustomSettingsPath(tempSettings)
+
+	code := m.Run()
+
+	SetCustomSettingsPath("")
+	_ = os.Remove(tempSettings)
+	os.Exit(code)
+}
 
 func TestPalettesAndMultipliers(t *testing.T) {
 	tests := []struct {
@@ -203,6 +216,7 @@ func TestRenderPipeline(t *testing.T) {
 		StateBonusRebuild,
 		StateTheEnd,
 		StateHighScoreEntry,
+		StateOptions,
 	}
 
 	for _, s := range states {
@@ -578,3 +592,215 @@ func TestMasterVolumeAndMute(t *testing.T) {
 		t.Error("Expected mute to be inactive")
 	}
 }
+
+func TestSoundEffectsToggle(t *testing.T) {
+	SetSoundEffectsEnabled(true)
+	if !IsSoundEffectsEnabled() {
+		t.Errorf("Expected SoundEffectsEnabled to be true")
+	}
+	if IsMuted() {
+		t.Errorf("Expected IsMuted to be false when sound effects enabled")
+	}
+
+	SetSoundEffectsEnabled(false)
+	if IsSoundEffectsEnabled() {
+		t.Errorf("Expected SoundEffectsEnabled to be false")
+	}
+	if !IsMuted() {
+		t.Errorf("Expected IsMuted to be true when sound effects disabled")
+	}
+
+	// Restore sound
+	SetSoundEffectsEnabled(true)
+}
+
+func TestMissilesPerSiloConfiguration(t *testing.T) {
+	tempFile := filepath.Join(t.TempDir(), "test_settings.json")
+	SetCustomSettingsPath(tempFile)
+	defer SetCustomSettingsPath("")
+
+	g := NewGame()
+	g.Settings.MissilesPerSilo = 50
+	g.resetSilos()
+
+	for i := 0; i < 3; i++ {
+		if g.Batteries[i].MaxAmmo != 50 || g.Batteries[i].Ammo != 50 {
+			t.Errorf("Battery %d expected MaxAmmo=50 and Ammo=50, got Max=%d Ammo=%d",
+				i, g.Batteries[i].MaxAmmo, g.Batteries[i].Ammo)
+		}
+	}
+
+	// Test 100 missiles
+	g.Settings.MissilesPerSilo = 100
+	g.resetSilos()
+	for i := 0; i < 3; i++ {
+		if g.Batteries[i].MaxAmmo != 100 || g.Batteries[i].Ammo != 100 {
+			t.Errorf("Battery %d expected MaxAmmo=100 and Ammo=100, got Max=%d Ammo=%d",
+				i, g.Batteries[i].MaxAmmo, g.Batteries[i].Ammo)
+		}
+	}
+}
+
+func TestCalculateSiloNeedles(t *testing.T) {
+	// For maxAmmo 10
+	if CalculateSiloNeedles(0, 10) != 0 {
+		t.Errorf("Expected 0 needles for 0 ammo")
+	}
+	if CalculateSiloNeedles(5, 10) != 5 {
+		t.Errorf("Expected 5 needles for 5 ammo out of 10")
+	}
+	if CalculateSiloNeedles(10, 10) != 10 {
+		t.Errorf("Expected 10 needles for 10 ammo out of 10")
+	}
+
+	// For maxAmmo 100
+	if CalculateSiloNeedles(100, 100) != 10 {
+		t.Errorf("Expected 10 needles for 100/100 ammo")
+	}
+	if CalculateSiloNeedles(90, 100) != 9 {
+		t.Errorf("Expected 9 needles for 90/100 ammo")
+	}
+	if CalculateSiloNeedles(50, 100) != 5 {
+		t.Errorf("Expected 5 needles for 50/100 ammo")
+	}
+	if CalculateSiloNeedles(1, 100) != 1 {
+		t.Errorf("Expected 1 needle for 1/100 ammo")
+	}
+	if CalculateSiloNeedles(0, 100) != 0 {
+		t.Errorf("Expected 0 needles for 0/100 ammo")
+	}
+}
+
+func TestOptionsNavigationAndAdjustment(t *testing.T) {
+	tempFile := filepath.Join(t.TempDir(), "test_settings.json")
+	SetCustomSettingsPath(tempFile)
+	defer SetCustomSettingsPath("")
+
+	g := NewGame()
+	g.openOptions(StateAttract)
+
+	if g.State != StateOptions {
+		t.Fatalf("Expected StateOptions, got %v", g.State)
+	}
+	if g.OptionSelectedIdx != 0 {
+		t.Errorf("Expected initial option idx 0, got %d", g.OptionSelectedIdx)
+	}
+
+	// Navigate down to Missiles/Silo (idx 1)
+	g.OptionSelectedIdx = 1
+
+	// Increase missiles by 10
+	initMissiles := g.Settings.MissilesPerSilo
+	g.adjustOption(1)
+	if g.Settings.MissilesPerSilo != initMissiles+10 {
+		t.Errorf("Expected missiles %d, got %d", initMissiles+10, g.Settings.MissilesPerSilo)
+	}
+
+	// Decrease missiles by 10
+	g.adjustOption(-1)
+	if g.Settings.MissilesPerSilo != initMissiles {
+		t.Errorf("Expected missiles %d, got %d", initMissiles, g.Settings.MissilesPerSilo)
+	}
+
+	// Cycle forward via activateOption
+	g.Settings.MissilesPerSilo = 100
+	g.activateOption()
+	if g.Settings.MissilesPerSilo != 10 {
+		t.Errorf("Expected wrap from 100 to 10, got %d", g.Settings.MissilesPerSilo)
+	}
+
+	// Navigate to Sound Effects (idx 0) and toggle
+	g.OptionSelectedIdx = 0
+	initSound := g.Settings.SoundEffectsEnabled
+	g.activateOption()
+	if g.Settings.SoundEffectsEnabled == initSound {
+		t.Errorf("Expected sound effects to toggle from %v", initSound)
+	}
+
+	// Close options
+	g.closeOptions()
+	if g.State != StateAttract {
+		t.Errorf("Expected return to StateAttract, got %v", g.State)
+	}
+}
+
+func TestSiloDrawingWithVariousAmmoLevels(t *testing.T) {
+	g := NewGame()
+	img := ebiten.NewImage(256, 231)
+
+	// Test drawing silo for ammo levels 0..100 with maxAmmo 100
+	for ammo := 0; ammo <= 100; ammo += 10 {
+		bat := Battery{
+			Index:    1,
+			Position: Point{X: 128, Y: 214},
+			MaxAmmo:  100,
+			Ammo:     ammo,
+		}
+		g.drawSilo(img, bat)
+	}
+
+	// Test LOW flashing state (ammo 1, 2, 3)
+	for ammo := 1; ammo <= 3; ammo++ {
+		bat := Battery{
+			Index:    0,
+			Position: Point{X: 18, Y: 214},
+			MaxAmmo:  50,
+			Ammo:     ammo,
+		}
+		g.drawSilo(img, bat)
+	}
+
+	// Test OUT state (ammo 0)
+	batZero := Battery{
+		Index:    2,
+		Position: Point{X: 238, Y: 214},
+		MaxAmmo:  30,
+		Ammo:     0,
+	}
+	g.drawSilo(img, batZero)
+}
+
+func TestDrawSiloTicks(t *testing.T) {
+	g := NewGame()
+	img := ebiten.NewImage(256, 231)
+
+	// Test maxAmmo <= 10 (classic pyramid)
+	for ammo := 0; ammo <= 10; ammo++ {
+		DrawSiloTicks(img, 128, 222, ammo, 10, g.Palette.SiloColor, g.Palette.GroundColor)
+	}
+
+	// Test maxAmmo = 20..100 in steps of 10
+	for maxAmmo := 20; maxAmmo <= 100; maxAmmo += 10 {
+		for ammo := 0; ammo <= maxAmmo; ammo += 5 {
+			DrawSiloTicks(img, 128, 222, ammo, maxAmmo, g.Palette.SiloColor, g.Palette.GroundColor)
+		}
+	}
+
+	// Test edge cases
+	DrawSiloTicks(img, 128, 222, -5, 100, g.Palette.SiloColor, g.Palette.GroundColor)
+	DrawSiloTicks(img, 128, 222, 120, 100, g.Palette.SiloColor, g.Palette.GroundColor)
+}
+
+func TestSiloAmmoTicksAndNumbersTransition(t *testing.T) {
+	g := NewGame()
+
+	// Test rendering across the transition threshold (ammo > 10 down to 0)
+	for ammo := 15; ammo >= 0; ammo-- {
+		img := ebiten.NewImage(256, 231)
+		bat := Battery{
+			Index:    1,
+			Position: Point{X: 128, Y: 214},
+			MaxAmmo:  50,
+			Ammo:     ammo,
+		}
+		g.drawSilo(img, bat)
+
+		// Check pixel in the mound center where pyramid apex / number is drawn
+		// For ammo > 10: number is drawn at Y=214
+		// For ammo <= 10: pyramid ticks are drawn
+		// Should execute cleanly without panic
+	}
+}
+
+
+

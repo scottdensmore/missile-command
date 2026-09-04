@@ -77,6 +77,21 @@ func IsMuted() bool {
 	return isMuted
 }
 
+// SetSoundEffectsEnabled enables or disables all game sound effects.
+func SetSoundEffectsEnabled(enabled bool) {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	isMuted = !enabled
+	updateLoopingVolumesLocked()
+}
+
+// IsSoundEffectsEnabled returns true if game sound effects are currently active.
+func IsSoundEffectsEnabled() bool {
+	audioMu.Lock()
+	defer audioMu.Unlock()
+	return !isMuted
+}
+
 // AdjustVolume increases or decreases global volume by delta and returns the new level.
 func AdjustVolume(delta float64) float64 {
 	audioMu.Lock()
