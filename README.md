@@ -33,8 +33,13 @@ Zero external audio assets or sprite packs are required—every sound waveform a
 
 ## 🚀 Quick Start
 
-### 1. Download Precompiled Binaries
-Ready-to-run release binaries for **macOS (Apple Silicon & Intel)**, **Linux (x86_64)**, and **Windows (x64)** are available on the **[Releases Page](https://github.com/scottdensmore/missile-command/releases/tag/v1.0.0)**.
+### 1. Download Precompiled Releases & Distribution Packages
+Ready-to-run releases and distribution packages are available on the **[Releases Page](https://github.com/scottdensmore/missile-command/releases)**:
+* 🍏 **macOS Universal Bundle**: `Missile-Command-macOS-Universal.zip` — Standalone double-clickable `Missile Command.app` containing a Universal 2 binary running natively on both Apple Silicon (M1/M2/M3/M4) and Intel Macs. Single-architecture CLI binaries (`arm64` & `amd64`) are also provided.
+* 🪟 **Windows Desktop Package**: `missile-command-windows-amd64.zip` — Includes executable, desktop icon, and documentation (standalone `missile-command-windows-amd64.exe` also available).
+* 🐧 **Linux Package**: `missile-command-linux-amd64.tar.gz` — Includes binary and Freedesktop icon set (standalone `missile-command-linux-amd64` also available).
+* 🌐 **WebAssembly Web Port**: `missile-command-wasm.zip` — Ready-to-host web bundle with retro arcade HTML runner, WASM engine, and theme-aware favicons.
+* 🔒 **Security**: `checksums.txt` — SHA-256 checksums for all distribution packages and binaries.
 
 ### 2. Run from Source
 Prerequisites: [Go 1.25+](https://golang.org/dl/) installed.
@@ -117,13 +122,15 @@ Explore the detailed technical documentation and game guides:
 ---
 
 ## 🧪 Testing & CI/CD
-
+ 
 Run the automated test suite locally:
 ```bash
 go test -v ./...
 ```
 
-The repository includes multi-platform [GitHub Actions CI](.github/workflows/ci.yml) running on macOS, Ubuntu (with virtual framebuffer `xvfb`), and Windows, alongside automated cross-platform binary releases.
+The repository features two automated GitHub Actions workflows:
+* 🛠️ **[CI Pipeline (`.github/workflows/ci.yml`)](.github/workflows/ci.yml)**: Runs unit tests across Linux (with virtual framebuffer `xvfb`), macOS, and Windows with race detection, verifies Go dependencies, and tests WebAssembly compilation on all pull requests and pushes to `main`.
+* 🚀 **[Release Pipeline (`.github/workflows/release.yml`)](.github/workflows/release.yml)**: Automatically cuts and publishes multi-platform releases when features or bug fixes land on `main` (driven by `CHANGELOG.md` versioning and conventional commits), upon manual tag pushes (`v*`), or via manual `workflow_dispatch`. Builds and publishes macOS Universal `.app` bundles, Windows ZIPs, Linux Tarballs, WebAssembly web packages, standalone binaries, and SHA-256 checksums.
 
 ---
 
