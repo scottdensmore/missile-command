@@ -785,6 +785,22 @@ func (g *Game) updateSpawning() {
 		return
 	}
 
+	// Authentic arcade pacing: The game does not launch any new attacks while
+	// the highest ICBM or smart bomb is above (202 - 2 * wave_number), with a floor of 180.
+	// In screen coordinates (Y=0 at top): thresholdY = min(51.0, 29.0 + float64(g.Wave)*2.0).
+	// Attacks are blocked until all active threats have descended past this altitude.
+	thresholdY := math.Min(51.0, 29.0+float64(g.Wave)*2.0)
+	for _, icbm := range g.ICBMs {
+		if icbm.Active && icbm.Curr.Y < thresholdY {
+			return
+		}
+	}
+	for _, sb := range g.SmartBombs {
+		if sb.Active && sb.Curr.Y < thresholdY {
+			return
+		}
+	}
+
 	g.SpawnCooldown--
 	if g.SpawnCooldown > 0 {
 		return
@@ -792,8 +808,10 @@ func (g *Game) updateSpawning() {
 
 	wdata := GetWaveData(g.Wave)
 
-	// Determine whether to spawn a Smart Bomb or ICBM
-	if g.SmartBombsLeft > 0 && (g.ICBMsRemaining <= 0 || rand.Float64() < 0.35) {
+	// Determine whether to spawn a Smart Bomb or ICBM.
+	// Arcade limit: maximum 3 active smart bombs on screen simultaneously.
+	canSpawnSB := g.SmartBombsLeft > 0 && len(g.SmartBombs) < 3
+	if canSpawnSB && (g.ICBMsRemaining <= 0 || rand.Float64() < 0.35) {
 		g.SmartBombsLeft--
 		spawnX := 20.0 + rand.Float64()*(SimWidth-40.0)
 		target := g.pickRandomTarget()
@@ -802,7 +820,7 @@ func (g *Game) updateSpawning() {
 			Start:    Point{X: spawnX, Y: 0},
 			Curr:     Point{X: spawnX, Y: 0},
 			Target:   target,
-			Speed:    wdata.Speed * 0.95,
+			Speed:    wdata.Speed, // Authentic: same speed as ICBMs
 			Progress: 0.0,
 			Active:   true,
 		}
@@ -813,13 +831,14 @@ func (g *Game) updateSpawning() {
 		spawnX := rand.Float64() * SimWidth
 		target := g.pickRandomTarget()
 
-		// Wave >= 2 splitters (MIRVs)
+		// Wave >= 2 splitters (MIRVs): requires at least 2 remaining missiles for sisters
 		isSplit := false
-		if g.Wave >= 2 && rand.Float64() < 0.25 {
+		if g.Wave >= 2 && g.ICBMsRemaining >= 2 && rand.Float64() < 0.25 {
 			isSplit = true
 		}
 
-		splitAlt := 50.0 + rand.Float64()*80.0
+		// Arcade split altitude is between 128 and 159 (Y in 72..103 in screen coords)
+		splitAlt := 72.0 + rand.Float64()*31.0
 
 		icbm := &ICBM{
 			Start:         Point{X: spawnX, Y: 0},
@@ -834,9 +853,9 @@ func (g *Game) updateSpawning() {
 		g.ICBMs = append(g.ICBMs, icbm)
 	}
 
-	// Set next spawn cooldown
-	minCD := math.Max(15, 60-float64(g.Wave)*3.5)
-	maxCD := math.Max(30, 110-float64(g.Wave)*6.0)
+	// Set next spawn cooldown (paced naturally alongside altitude threshold)
+	minCD := math.Max(20, 55-float64(g.Wave)*2.5)
+	maxCD := math.Max(40, 95-float64(g.Wave)*4.0)
 	g.SpawnCooldown = int(minCD) + rand.Intn(int(maxCD-minCD+1))
 }
 
@@ -866,11 +885,14 @@ func (g *Game) updateFlier() {
 				g.FlierSpawnedThisWave = true
 				ft := FlierBomber
 				alt := 65.0 + rand.Float64()*25.0
-				speed := 0.65 + float64(g.Wave)*0.06
+				// Authentic arcade flier speeds (constant across all waves):
+				// Bombers move at 1 pixel every 3 frames (~0.333 px/frame).
+				// Satellites move at 1 pixel every 2 frames (0.500 px/frame).
+				speed := 1.0 / 3.0
 				if rand.Float64() < 0.45 {
 					ft = FlierSatellite
 					alt = 28.0 + rand.Float64()*18.0
-					speed = 0.85 + float64(g.Wave)*0.08
+					speed = 0.50
 				}
 
 				movingRight := rand.Float64() < 0.5
@@ -920,13 +942,18 @@ func (g *Game) updateFlier() {
 			flier.BombsRemaining--
 			flier.DropCooldown = 60 + rand.Intn(40)
 
+			// Decrement wave missile quota if remaining
+			if g.ICBMsRemaining > 0 {
+				g.ICBMsRemaining--
+			}
+
 			target := g.pickRandomTarget()
 			wdata := GetWaveData(g.Wave)
 			icbm := &ICBM{
 				Start:    Point{X: flier.X, Y: flier.Y},
 				Curr:     Point{X: flier.X, Y: flier.Y},
 				Target:   target,
-				Speed:    wdata.Speed * 1.1,
+				Speed:    wdata.Speed, // Standard wave speed, no artificial boost
 				Progress: 0.0,
 				Active:   true,
 			}
@@ -974,17 +1001,25 @@ func (g *Game) updateICBMs() {
 			continue
 		}
 
-		// MIRV Split Logic
+		// MIRV Split Logic: in the authentic arcade game, sister warheads count toward the wave total.
+		// Missiles only split if quota remains.
 		if icbm.IsSplitter && !icbm.Splitted && icbm.Curr.Y >= icbm.SplitAltitude {
 			icbm.Splitted = true
-			// Spawn 2 sister warheads
-			for s := 0; s < 2; s++ {
+			sistersToSpawn := 0
+			if g.ICBMsRemaining >= 2 {
+				sistersToSpawn = 2
+			} else if g.ICBMsRemaining == 1 {
+				sistersToSpawn = 1
+			}
+			g.ICBMsRemaining -= sistersToSpawn
+
+			for s := 0; s < sistersToSpawn; s++ {
 				sisterTarget := g.pickRandomTarget()
 				sister := &ICBM{
 					Start:      icbm.Curr,
 					Curr:       icbm.Curr,
 					Target:     sisterTarget,
-					Speed:      icbm.Speed * 1.05,
+					Speed:      icbm.Speed,
 					Progress:   0.0,
 					IsSplitter: false,
 					Active:     true,

@@ -802,5 +802,186 @@ func TestSiloAmmoTicksAndNumbersTransition(t *testing.T) {
 	}
 }
 
+func TestAuthenticArcadeSpeedProgression(t *testing.T) {
+	// Wave 1 speed must be ~0.172 px/frame
+	w1 := GetWaveData(1)
+	if math.Abs(w1.Speed-0.172) > 0.01 {
+		t.Errorf("Wave 1 speed should be ~0.172, got %f", w1.Speed)
+	}
 
+	// Wave 15+ speed must cap at 1.000 px/frame
+	w15 := GetWaveData(15)
+	if w15.Speed != 1.0 {
+		t.Errorf("Wave 15 speed should be 1.0, got %f", w15.Speed)
+	}
 
+	w19 := GetWaveData(19)
+	if w19.Speed != 1.0 {
+		t.Errorf("Wave 19 speed should be 1.0, got %f", w19.Speed)
+	}
+
+	// Speeds must never exceed 1.0 and must be monotonically non-decreasing
+	prevSpeed := 0.0
+	for wave := 1; wave <= 25; wave++ {
+		w := GetWaveData(wave)
+		if w.Speed > 1.0 {
+			t.Errorf("Wave %d speed (%f) exceeds arcade max of 1.0", wave, w.Speed)
+		}
+		if w.Speed < prevSpeed {
+			t.Errorf("Wave %d speed (%f) is less than previous wave speed (%f)", wave, w.Speed, prevSpeed)
+		}
+		prevSpeed = w.Speed
+	}
+}
+
+func TestAltitudeBasedAttackPacing(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+	g.Wave = 1
+	g.ICBMsRemaining = 10
+	g.SpawnCooldown = 0
+
+	// Add an ICBM near the top of the screen (Y=10)
+	g.ICBMs = []*ICBM{
+		{
+			Start:    Point{X: 100, Y: 0},
+			Curr:     Point{X: 100, Y: 10},
+			Target:   Point{X: 100, Y: 216},
+			Active:   true,
+			Speed:    0.172,
+			Progress: 0.05,
+		},
+	}
+
+	// Pacing check: threshold for wave 1 is min(51, 29 + 2*1) = 31.
+	// Since Curr.Y (10) < 31, updateSpawning should be blocked.
+	g.updateSpawning()
+	if len(g.ICBMs) != 1 || g.ICBMsRemaining != 10 {
+		t.Errorf("Pacing should block spawn when missile is at Y=10. Got %d ICBMs, %d remaining",
+			len(g.ICBMs), g.ICBMsRemaining)
+	}
+
+	// Now move the missile below threshold (Y=40 > 31)
+	g.ICBMs[0].Curr.Y = 40
+	g.updateSpawning()
+	if len(g.ICBMs) != 2 || g.ICBMsRemaining != 9 {
+		t.Errorf("Pacing should allow spawn when missile descends below threshold. Got %d ICBMs, %d remaining",
+			len(g.ICBMs), g.ICBMsRemaining)
+	}
+}
+
+func TestSmartBombSimultaneousCap(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+	g.Wave = 10
+	g.ICBMsRemaining = 0
+	g.SmartBombsLeft = 5
+	g.SpawnCooldown = 0
+
+	// Pre-populate 3 smart bombs at descended altitudes (Y=60 > thresholdY)
+	g.SmartBombs = []*SmartBomb{
+		{Start: Point{X: 50, Y: 0}, Curr: Point{X: 50, Y: 60}, Target: Point{X: 50, Y: 216}, Active: true},
+		{Start: Point{X: 100, Y: 0}, Curr: Point{X: 100, Y: 70}, Target: Point{X: 100, Y: 216}, Active: true},
+		{Start: Point{X: 150, Y: 0}, Curr: Point{X: 150, Y: 80}, Target: Point{X: 150, Y: 216}, Active: true},
+	}
+
+	// Attempt to spawn another smart bomb; should be blocked by the cap of 3
+	g.updateSpawning()
+	if len(g.SmartBombs) != 3 || g.SmartBombsLeft != 5 {
+		t.Errorf("Should not spawn more than 3 simultaneous smart bombs. Got %d active, %d left",
+			len(g.SmartBombs), g.SmartBombsLeft)
+	}
+}
+
+func TestMIRVSisterWarheadQuotaAccounting(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+	g.Wave = 2
+	g.ICBMsRemaining = 5
+
+	// Create an active splitter ICBM that has reached its split altitude
+	icbm := &ICBM{
+		Start:         Point{X: 100, Y: 0},
+		Curr:          Point{X: 100, Y: 80},
+		Target:        Point{X: 100, Y: 216},
+		Speed:         0.258,
+		IsSplitter:    true,
+		Splitted:      false,
+		SplitAltitude: 75.0,
+		Active:        true,
+	}
+	g.ICBMs = []*ICBM{icbm}
+
+	g.updateICBMs()
+
+	// Splitter + 2 sisters = 3 active ICBMs
+	if len(g.ICBMs) != 3 {
+		t.Fatalf("Expected 3 active ICBMs after split, got %d", len(g.ICBMs))
+	}
+
+	// Remaining quota should have been decremented by 2 for the sisters
+	if g.ICBMsRemaining != 3 {
+		t.Errorf("Expected ICBMsRemaining to be 3 after 2 sisters spawned, got %d", g.ICBMsRemaining)
+	}
+
+	// When quota is 0, another splitter should not spawn sisters
+	g.ICBMsRemaining = 0
+	splitter2 := &ICBM{
+		Start:         Point{X: 150, Y: 0},
+		Curr:          Point{X: 150, Y: 80},
+		Target:        Point{X: 150, Y: 216},
+		Speed:         0.258,
+		IsSplitter:    true,
+		Splitted:      false,
+		SplitAltitude: 75.0,
+		Active:        true,
+	}
+	g.ICBMs = []*ICBM{splitter2}
+
+	g.updateICBMs()
+	if len(g.ICBMs) != 1 {
+		t.Errorf("Splitter with 0 quota remaining should not spawn sisters, got %d active", len(g.ICBMs))
+	}
+}
+
+func TestFlierConstantSpeedAndBombAccounting(t *testing.T) {
+	g := NewGame()
+	StartGame(g)
+	g.State = StatePlaying
+	g.Wave = 10
+	g.ICBMsRemaining = 10
+
+	// Spawn a bomber flier
+	g.ActiveFlier = &Flier{
+		Type:           FlierBomber,
+		X:              100,
+		Y:              70,
+		Speed:          1.0 / 3.0,
+		DropCooldown:   1, // will drop on update
+		BombsRemaining: 1,
+		Active:         true,
+	}
+
+	// Flier speed should be ~0.333
+	if math.Abs(g.ActiveFlier.Speed-(1.0/3.0)) > 0.001 {
+		t.Errorf("Bomber speed should be 1/3, got %f", g.ActiveFlier.Speed)
+	}
+
+	g.updateFlier()
+
+	// Bomb dropped: should have created 1 ICBM and decremented quota
+	if len(g.ICBMs) != 1 {
+		t.Fatalf("Expected 1 ICBM from flier bomb drop, got %d", len(g.ICBMs))
+	}
+	if g.ICBMsRemaining != 9 {
+		t.Errorf("Expected ICBMsRemaining to be 9 after flier bomb, got %d", g.ICBMsRemaining)
+	}
+	// Bomb speed should match wave speed exactly (not 1.1x)
+	wdata := GetWaveData(g.Wave)
+	if g.ICBMs[0].Speed != wdata.Speed {
+		t.Errorf("Flier bomb speed (%f) should match wave speed (%f)", g.ICBMs[0].Speed, wdata.Speed)
+	}
+}
