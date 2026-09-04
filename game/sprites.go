@@ -1,9 +1,11 @@
 package game
 
 import (
+	"fmt"
 	"image/color"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 // Bitmap8x8 represents an 8x8 single-bit pixel matrix.
@@ -302,3 +304,38 @@ func DrawAmmoPyramid(target *ebiten.Image, centerX, baseY int, ammo int, col col
 		}
 	}
 }
+
+// CalculateSiloNeedles computes how many pyramid needle sprites (0 to 10) to draw for a given ammo and maxAmmo.
+func CalculateSiloNeedles(ammo, maxAmmo int) int {
+	if ammo <= 0 || maxAmmo <= 0 {
+		return 0
+	}
+	needles := (ammo*10 + maxAmmo - 1) / maxAmmo
+	if needles > 10 {
+		needles = 10
+	}
+	return needles
+}
+
+// DrawSiloTicks draws the missile ammo in the silo:
+// When ammo <= 10 (the number of ticks that can fit in a silo), it renders the ammo as ticks in the classic pyramid.
+// When ammo > 10 (above the number of ticks that can fit in a silo), it renders the number inside the silo mound.
+func DrawSiloTicks(target *ebiten.Image, bx, baseY, ammo, maxAmmo int, col, groundCol color.RGBA) {
+	if ammo <= 0 {
+		return
+	}
+	if ammo <= 10 {
+		DrawAmmoPyramid(target, bx, 220, ammo, col)
+		return
+	}
+
+	// When ammo > 10, render the number inside the silo mound
+	ammoStr := fmt.Sprintf("%d", ammo)
+	// Fill the mound behind the number with groundCol so digits are cleanly framed
+	vector.DrawFilledRect(target, float32(bx-13), 212, 26, 12, groundCol, false)
+	DrawArcadeText(target, ammoStr, bx-len(ammoStr)*4, 214, col)
+}
+
+
+
+

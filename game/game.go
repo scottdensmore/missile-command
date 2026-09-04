@@ -22,6 +22,7 @@ const (
 	StateBonusRebuild
 	StateTheEnd
 	StateHighScoreEntry
+	StateOptions
 )
 
 // Game implements the ebiten.Game interface for the arcade replica.
@@ -97,17 +98,25 @@ type Game struct {
 	MouseCaptured          bool
 	Paused                 bool
 	Tick                   int
+
+	// Options & Settings
+	Settings          *GameSettings
+	OptionSelectedIdx int
+	PreviousState     GameState
 }
 
-// NewGame initializes the game engine and loads scores/audio.
+// NewGame initializes the game engine and loads scores/audio/settings.
 func NewGame() *Game {
 	InitAudio()
+	settings := LoadSettings()
+	SetSoundEffectsEnabled(settings.SoundEffectsEnabled)
 
 	g := &Game{
 		Width:              1024,
 		Height:             924,
 		pipeline:           NewPipeline(),
 		highScores:         LoadHighScores(),
+		Settings:           settings,
 		State:              StateAttract,
 		Wave:               1,
 		Score:              0,
@@ -116,6 +125,7 @@ func NewGame() *Game {
 		AttractDemoMode:    false,
 		AttractTimer:       600, // 10 seconds Great Scores display before AI demo
 	}
+	g.pipeline.UseCRT = settings.UseCRT
 
 	g.Crosshair.Pos = Point{X: SimWidth / 2, Y: SimHeight / 2}
 	g.Palette = GetPaletteForWave(1)
@@ -159,13 +169,17 @@ func StartGame(g *Game) {
 }
 
 func (g *Game) resetSilos() {
+	maxAmmo := 10
+	if g.Settings != nil && g.Settings.MissilesPerSilo > 0 {
+		maxAmmo = g.Settings.MissilesPerSilo
+	}
 	batteryXs := []float64{18, 128, 238}
 	for i, x := range batteryXs {
 		g.Batteries[i] = Battery{
 			Index:            i,
 			Position:         Point{X: x, Y: 214},
-			MaxAmmo:          10,
-			Ammo:             10,
+			MaxAmmo:          maxAmmo,
+			Ammo:             maxAmmo,
 			Destroyed:        false,
 			LowWarningPlayed: false,
 		}
@@ -216,6 +230,10 @@ func (g *Game) Update() error {
 	// CRT Filter Toggle (F1 / Tab)
 	if inpututil.IsKeyJustPressed(ebiten.KeyF1) || inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.pipeline.UseCRT = !g.pipeline.UseCRT
+		if g.Settings != nil {
+			g.Settings.UseCRT = g.pipeline.UseCRT
+			_ = g.Settings.Save()
+		}
 		if g.pipeline.UseCRT {
 			g.showNotification("CRT SHADER: ON")
 		} else {
@@ -238,6 +256,10 @@ func (g *Game) Update() error {
 	// Sound Mute Toggle (M Key)
 	if inpututil.IsKeyJustPressed(ebiten.KeyM) {
 		muted := ToggleMute()
+		if g.Settings != nil {
+			g.Settings.SoundEffectsEnabled = !muted
+			_ = g.Settings.Save()
+		}
 		if muted {
 			g.showNotification("SOUND: MUTED")
 		} else {
@@ -257,6 +279,41 @@ func (g *Game) Update() error {
 
 	if g.NotificationTimer > 0 {
 		g.NotificationTimer--
+	}
+
+	// Options Toggle (O Key or Gamepad Select/Back)
+	isOptionsPressed := inpututil.IsKeyJustPressed(ebiten.KeyO)
+	if !isOptionsPressed {
+		ids := ebiten.AppendGamepadIDs(nil)
+		for _, id := range ids {
+			if ebiten.IsStandardGamepadLayoutAvailable(id) && inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonCenterLeft) {
+				isOptionsPressed = true
+				break
+			}
+		}
+	}
+
+	if isOptionsPressed {
+		if g.State == StateOptions {
+			g.closeOptions()
+			return nil
+		} else if g.State == StateAttract {
+			g.openOptions(StateAttract)
+			return nil
+		} else if g.State == StatePlaying || g.Paused {
+			if !g.Paused {
+				g.Paused = true
+				StopAllContinuousSounds()
+			}
+			g.openOptions(StatePlaying)
+			return nil
+		}
+	}
+
+	// If in options state, handle options updates directly
+	if g.State == StateOptions {
+		g.updateOptions()
+		return nil
 	}
 
 	// Quit / Exit Handling (Q Key)
@@ -312,6 +369,8 @@ func (g *Game) Update() error {
 		g.updateTheEnd()
 	case StateHighScoreEntry:
 		g.updateHighScoreEntry()
+	case StateOptions:
+		g.updateOptions()
 	}
 
 	return nil
@@ -362,6 +421,15 @@ func (g *Game) checkAnyStartInput() bool {
 }
 
 func (g *Game) updateAttract() {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		simPos := ScreenToSim(float64(mx), float64(my), g.Width, g.Height)
+		if simPos.Y >= 184 && simPos.Y <= 198 && simPos.X >= 20 && simPos.X <= 100 {
+			g.openOptions(StateAttract)
+			return
+		}
+	}
+
 	if g.checkAnyStartInput() {
 		StartGame(g)
 		return
@@ -1220,11 +1288,25 @@ func (g *Game) updateTally() {
 		for g.TallyBatteryIdx < len(g.Batteries) {
 			bat := &g.Batteries[g.TallyBatteryIdx]
 			if bat.Ammo > 0 {
-				bat.Ammo--
-				pts := 5 * g.Palette.Multiplier
+				decrement := 1
+				if bat.Ammo > 20 {
+					decrement = 5
+				} else if bat.Ammo > 10 {
+					decrement = 2
+				}
+				if decrement > bat.Ammo {
+					decrement = bat.Ammo
+				}
+				bat.Ammo -= decrement
+				pts := decrement * 5 * g.Palette.Multiplier
 				g.Score += pts
 				g.TallyScoreEarned += pts
 				PlayTallySound()
+				if bat.MaxAmmo > 10 {
+					g.TallyTimer = 3
+				} else {
+					g.TallyTimer = 8
+				}
 				return
 			}
 			g.TallyBatteryIdx++
@@ -1339,6 +1421,180 @@ func (g *Game) advanceInitialSlot() {
 	}
 }
 
+func (g *Game) openOptions(fromState GameState) {
+	g.PreviousState = fromState
+	g.OptionSelectedIdx = 0
+	g.State = StateOptions
+}
+
+func (g *Game) closeOptions() {
+	if g.Settings != nil {
+		_ = g.Settings.Save()
+		// If in active playing game, update battery max ammo and clamp current ammo
+		if g.PreviousState == StatePlaying {
+			for i := range g.Batteries {
+				g.Batteries[i].MaxAmmo = g.Settings.MissilesPerSilo
+				if g.Batteries[i].Ammo > g.Settings.MissilesPerSilo {
+					g.Batteries[i].Ammo = g.Settings.MissilesPerSilo
+				}
+			}
+		}
+	}
+	if g.PreviousState == StatePlaying {
+		g.Paused = true
+		g.State = StatePlaying
+	} else if g.PreviousState != 0 {
+		g.State = g.PreviousState
+	} else {
+		g.enterAttractMode()
+	}
+}
+
+func (g *Game) updateOptions() {
+	// Navigation: Up / Down
+	if inpututil.IsKeyJustPressed(ebiten.KeyUp) || inpututil.IsKeyJustPressed(ebiten.KeyW) {
+		g.OptionSelectedIdx = (g.OptionSelectedIdx + 3) % 4
+		PlayTallySound()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyDown) || inpututil.IsKeyJustPressed(ebiten.KeyS) {
+		g.OptionSelectedIdx = (g.OptionSelectedIdx + 1) % 4
+		PlayTallySound()
+	}
+
+	// Gamepad navigation
+	ids := ebiten.AppendGamepadIDs(nil)
+	for _, id := range ids {
+		if ebiten.IsStandardGamepadLayoutAvailable(id) {
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonLeftTop) {
+				g.OptionSelectedIdx = (g.OptionSelectedIdx + 3) % 4
+				PlayTallySound()
+			}
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonLeftBottom) {
+				g.OptionSelectedIdx = (g.OptionSelectedIdx + 1) % 4
+				PlayTallySound()
+			}
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonLeftLeft) {
+				g.adjustOption(-1)
+			}
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonLeftRight) {
+				g.adjustOption(1)
+			}
+			if inpututil.IsStandardGamepadButtonJustPressed(id, ebiten.StandardGamepadButtonRightBottom) {
+				g.activateOption()
+			}
+		}
+	}
+
+	// Left / Right value changes
+	if inpututil.IsKeyJustPressed(ebiten.KeyLeft) || inpututil.IsKeyJustPressed(ebiten.KeyA) {
+		g.adjustOption(-1)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyRight) || inpututil.IsKeyJustPressed(ebiten.KeyD) {
+		g.adjustOption(1)
+	}
+
+	// Enter / Space activates/cycles
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnter) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		g.activateOption()
+	}
+
+	// Escape / Q exits
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) || inpututil.IsKeyJustPressed(ebiten.KeyQ) {
+		g.closeOptions()
+		return
+	}
+
+	// Mouse click handling
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mx, my := ebiten.CursorPosition()
+		simPos := ScreenToSim(float64(mx), float64(my), g.Width, g.Height)
+		startY := 64
+		rowHeight := 24
+		for i := 0; i < 4; i++ {
+			y := startY + i*rowHeight
+			if simPos.Y >= float64(y-4) && simPos.Y <= float64(y+16) && simPos.X >= 16 && simPos.X <= 240 {
+				g.OptionSelectedIdx = i
+				if i == 0 {
+					g.toggleSoundOption()
+				} else if i == 1 {
+					if simPos.X < 192 {
+						g.adjustMissilesOption(-10)
+					} else {
+						g.adjustMissilesOption(10)
+					}
+				} else if i == 2 {
+					g.toggleCRTOption()
+				} else if i == 3 {
+					g.closeOptions()
+				}
+				return
+			}
+		}
+	}
+}
+
+func (g *Game) adjustOption(dir int) {
+	switch g.OptionSelectedIdx {
+	case 0:
+		g.toggleSoundOption()
+	case 1:
+		g.adjustMissilesOption(dir * 10)
+	case 2:
+		g.toggleCRTOption()
+	case 3:
+		// Back row - no directional adjust
+	}
+}
+
+func (g *Game) activateOption() {
+	switch g.OptionSelectedIdx {
+	case 0:
+		g.toggleSoundOption()
+	case 1:
+		newVal := g.Settings.MissilesPerSilo + 10
+		if newVal > 100 {
+			newVal = 10
+		}
+		g.Settings.MissilesPerSilo = newVal
+		_ = g.Settings.Save()
+		PlayTallySound()
+	case 2:
+		g.toggleCRTOption()
+	case 3:
+		g.closeOptions()
+	}
+}
+
+func (g *Game) toggleSoundOption() {
+	g.Settings.SoundEffectsEnabled = !g.Settings.SoundEffectsEnabled
+	SetSoundEffectsEnabled(g.Settings.SoundEffectsEnabled)
+	_ = g.Settings.Save()
+	if g.Settings.SoundEffectsEnabled {
+		PlayTallySound()
+	}
+}
+
+func (g *Game) adjustMissilesOption(delta int) {
+	newVal := g.Settings.MissilesPerSilo + delta
+	if newVal < 10 {
+		newVal = 10
+	} else if newVal > 100 {
+		newVal = 100
+	}
+	if newVal != g.Settings.MissilesPerSilo {
+		g.Settings.MissilesPerSilo = newVal
+		_ = g.Settings.Save()
+		PlayTallySound()
+	}
+}
+
+func (g *Game) toggleCRTOption() {
+	g.pipeline.UseCRT = !g.pipeline.UseCRT
+	g.Settings.UseCRT = g.pipeline.UseCRT
+	_ = g.Settings.Save()
+	PlayTallySound()
+}
+
 // Draw renders the arcade game visuals into the 256x231 framebuffer and outputs via the pipeline.
 func (g *Game) Draw(screen *ebiten.Image) {
 	fb := g.pipeline.frameBuffer
@@ -1362,12 +1618,17 @@ func (g *Game) renderPlayfield(target *ebiten.Image) {
 	white := color.RGBA{R: 240, G: 240, B: 240, A: 255}
 	red := color.RGBA{R: 240, G: 32, B: 32, A: 255}
 	yellow := color.RGBA{R: 240, G: 220, B: 32, A: 255}
+	cyan := color.RGBA{R: 40, G: 220, B: 240, A: 255}
 
 	// 1. Draw HUD
 	g.drawHUD(target)
 
 	if g.State == StateAttract {
 		g.drawAttractScreen(target)
+		return
+	}
+	if g.State == StateOptions {
+		g.drawOptionsScreen(target)
 		return
 	}
 
@@ -1470,16 +1731,17 @@ func (g *Game) renderPlayfield(target *ebiten.Image) {
 	// 13. Draw Pause Overlay
 	if g.Paused {
 		// Semi-opaque dark backdrop box
-		vector.DrawFilledRect(target, 44, 76, 168, 62, color.RGBA{R: 0, G: 0, B: 0, A: 230}, false)
-		vector.StrokeRect(target, 44, 76, 168, 62, 1.0, yellow, false)
+		vector.DrawFilledRect(target, 36, 72, 184, 68, color.RGBA{R: 0, G: 0, B: 0, A: 230}, false)
+		vector.StrokeRect(target, 36, 72, 184, 68, 1.0, yellow, false)
 
 		if (g.Tick/20)%2 == 0 {
-			DrawArcadeText(target, "GAME PAUSED", 84, 88, yellow)
+			DrawArcadeText(target, "GAME PAUSED", 84, 80, yellow)
 		} else {
-			DrawArcadeText(target, "GAME PAUSED", 84, 88, white)
+			DrawArcadeText(target, "GAME PAUSED", 84, 80, white)
 		}
-		DrawArcadeText(target, "PRESS P TO RESUME", 60, 106, white)
-		DrawArcadeText(target, "PRESS Q TO QUIT", 68, 120, g.Palette.TextColor)
+		DrawArcadeText(target, "PRESS P TO RESUME", 60, 96, white)
+		DrawArcadeText(target, "PRESS O FOR OPTIONS", 52, 110, cyan)
+		DrawArcadeText(target, "PRESS Q TO QUIT", 68, 124, g.Palette.TextColor)
 	}
 }
 
@@ -1533,19 +1795,19 @@ func (g *Game) drawSilo(target *ebiten.Image, bat Battery) {
 		return
 	}
 
-	// Draw 10-missile Ammo Pyramid inside the silo mound
-	DrawAmmoPyramid(target, bx, 220, bat.Ammo, g.Palette.SiloColor)
+	// Draw missile ammo as ticks in the silo
+	DrawSiloTicks(target, bx, 222, bat.Ammo, bat.MaxAmmo, g.Palette.SiloColor, g.Palette.GroundColor)
 
-	// Status text indicators
-	if bat.Ammo <= 3 && bat.Ammo > 0 {
-		// Flash LOW
-		if (g.Tick/15)%2 == 0 {
-			DrawArcadeText(target, "LOW", bx-12, 196, yellow)
-		}
-	} else if bat.Ammo == 0 {
+	// Status text indicators above the silo (Y = 196) - only when OUT or LOW
+	if bat.Ammo == 0 {
 		// Flash OUT
 		if (g.Tick/15)%2 == 0 {
 			DrawArcadeText(target, "OUT", bx-12, 196, red)
+		}
+	} else if bat.Ammo <= 3 {
+		// Flash LOW
+		if (g.Tick/15)%2 == 0 {
+			DrawArcadeText(target, "LOW", bx-12, 196, yellow)
 		}
 	}
 }
@@ -1649,10 +1911,86 @@ func (g *Game) drawAttractScreen(target *ebiten.Image) {
 
 	// Copyright & Start prompt
 	DrawArcadeText(target, "© 1980 ATARI INC", 64, 176, yellow)
-	DrawArcadeText(target, "P:PAUSE  Q:QUIT", 68, 190, cyan)
+	DrawArcadeText(target, "O:OPTIONS  P:PAUSE  Q:QUIT", 24, 190, cyan)
 	if (g.Tick/30)%2 == 0 {
 		DrawArcadeText(target, "PRESS SPACE OR CLICK", 48, 208, white)
 	}
+}
+
+func (g *Game) drawOptionsScreen(target *ebiten.Image) {
+	white := color.RGBA{R: 240, G: 240, B: 240, A: 255}
+	yellow := color.RGBA{R: 240, G: 220, B: 32, A: 255}
+	cyan := color.RGBA{R: 40, G: 220, B: 240, A: 255}
+	red := color.RGBA{R: 240, G: 40, B: 40, A: 255}
+	green := color.RGBA{R: 40, G: 240, B: 60, A: 255}
+
+	// Title
+	DrawArcadeText(target, "GAME OPTIONS", 80, 28, yellow)
+
+	backLabel := "BACK TO TITLE"
+	if g.PreviousState == StatePlaying {
+		backLabel = "BACK TO GAME"
+	}
+
+	soundVal := "[ OFF ]"
+	soundCol := red
+	if g.Settings != nil && g.Settings.SoundEffectsEnabled {
+		soundVal = "[ ON  ]"
+		soundCol = green
+	}
+
+	missilesVal := 10
+	if g.Settings != nil {
+		missilesVal = g.Settings.MissilesPerSilo
+	}
+
+	crtVal := "[ OFF ]"
+	crtCol := red
+	if g.pipeline.UseCRT {
+		crtVal = "[ ON  ]"
+		crtCol = green
+	}
+
+	type optRow struct {
+		label  string
+		val    string
+		valCol color.RGBA
+	}
+
+	rows := []optRow{
+		{label: "SOUND EFFECTS", val: soundVal, valCol: soundCol},
+		{label: "MISSILES/SILO", val: fmt.Sprintf("< %3d >", missilesVal), valCol: yellow},
+		{label: "CRT SCANLINES", val: crtVal, valCol: crtCol},
+		{label: backLabel, val: "", valCol: white},
+	}
+
+	startY := 64
+	rowHeight := 24
+
+	for i, r := range rows {
+		y := startY + i*rowHeight
+		isSel := (i == g.OptionSelectedIdx)
+
+		lblCol := cyan
+		if isSel {
+			lblCol = yellow
+			if (g.Tick/15)%2 == 0 {
+				DrawArcadeText(target, ">", 16, y, yellow)
+			} else {
+				DrawArcadeText(target, ">", 16, y, white)
+			}
+		}
+
+		DrawArcadeText(target, r.label, 28, y, lblCol)
+		if r.val != "" {
+			DrawArcadeText(target, r.val, 164, y, r.valCol)
+		}
+	}
+
+	// Bottom instructions
+	DrawArcadeText(target, "UP/DOWN : SELECT", 64, 178, cyan)
+	DrawArcadeText(target, "LEFT/RIGHT/CLICK : CHANGE", 28, 192, white)
+	DrawArcadeText(target, "ESC/ENTER : BACK", 64, 206, yellow)
 }
 
 func (g *Game) drawTheEndScreen(target *ebiten.Image) {
