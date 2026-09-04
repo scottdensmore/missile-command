@@ -32,6 +32,8 @@ jobs:
 
       - name: Evaluate Release Trigger & Version
         id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -63,13 +65,14 @@ jobs:
             echo "Workflow dispatch with explicit version detected: ${RELEASE_TAG}"
           else
             # Triggered on main branch push or workflow_dispatch without explicit version
-            # First check if CHANGELOG.md has an unreleased version header: e.g. ## [1.1.0]
+            # First check if CHANGELOG.md has a version header whose release has not yet been published on GitHub
             CHANGELOG_VERSION=$(grep -E '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | head -n 1 | sed -E 's/^## \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/' || true)
 
             if [ -n "${CHANGELOG_VERSION}" ]; then
               CANDIDATE_TAG="v${CHANGELOG_VERSION}"
-              if ! git rev-parse -q --verify "refs/tags/${CANDIDATE_TAG}" >/dev/null 2>&1; then
-                echo "Found untagged version ${CANDIDATE_TAG} in CHANGELOG.md"
+              RELEASE_EXISTS=$(gh release view "${CANDIDATE_TAG}" --json tagName -q .tagName 2>/dev/null || echo "")
+              if [ -z "${RELEASE_EXISTS}" ]; then
+                echo "Release ${CANDIDATE_TAG} declared in CHANGELOG.md is not yet published on GitHub."
                 RELEASE_TAG="${CANDIDATE_TAG}"
                 VERSION="${CHANGELOG_VERSION}"
                 SHOULD_RELEASE="true"
@@ -115,8 +118,8 @@ jobs:
               echo "Tagging ${RELEASE_TAG} on ${GITHUB_SHA}..."
               git config user.name "github-actions[bot]"
               git config user.email "github-actions[bot]@users.noreply.github.com"
-              git tag -a "${RELEASE_TAG}" -m "Release ${RELEASE_TAG}"
-              git push origin "${RELEASE_TAG}"
+              git tag -f -a "${RELEASE_TAG}" -m "Release ${RELEASE_TAG}"
+              git push -f origin "${RELEASE_TAG}"
             fi
           fi
 
@@ -204,8 +207,8 @@ jobs:
           mkdir -p dist
           
           # Compile standalone arm64 and amd64
-          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/missile-command-darwin-arm64 .
-          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/missile-command-darwin-amd64 .
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/missile-command-darwin-arm64 .
+          CGO_ENABLED=1 CGO_CFLAGS="-arch x86_64" CGO_LDFLAGS="-arch x86_64" GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/missile-command-darwin-amd64 .
           
           # Merge into Universal 2 binary
           lipo -create -output dist/missile-command-darwin-universal dist/missile-command-darwin-arm64 dist/missile-command-darwin-amd64
