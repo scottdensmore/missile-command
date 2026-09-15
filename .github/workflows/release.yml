@@ -143,6 +143,7 @@ jobs:
           name: changelog-notes
           path: changelog_notes.txt
           if-no-files-found: ignore
+          retention-days: 3
 
   build-release:
     name: Build (${{ matrix.name }})
@@ -272,6 +273,7 @@ jobs:
           name: build-assets-${{ matrix.target }}
           path: dist/
           if-no-files-found: error
+          retention-days: 3
 
   publish-release:
     name: Publish GitHub Release
