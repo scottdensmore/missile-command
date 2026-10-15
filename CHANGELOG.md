@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-10-15
+
+### Changed
+- **Complete Port to Rust & Macroquad**:
+  - Ported the entire 1980 Atari *Missile Command* arcade engine from Go/Ebitengine to pure **Rust** (`edition = "2021"`) and `macroquad`.
+  - Implemented a headless-testable 256×231 software RGBA `Framebuffer` with Bresenham raster lines, circles, rectangles, alpha blending, and pixel-perfect 8×8 arcade bitmap font & entity sprites.
+  - Ported theCRT scanline and phosphor saturation shader to GLSL (`#version 100`) with real-time nuclear detonation flash modulation and aspect-ratio letterboxing.
+  - Ported the 44,100 Hz 4-channel Atari POKEY hardware synthesizer (`poly4`, `poly5`, `poly17` LFSRs and square-wave frequency dividers) generating all 11 sound effects and continuous loops in-memory with zero external audio assets.
+  - Replaced `scripts/generate-icons.go` with a pure-Rust `generate_icons` binary (`src/bin/generate_icons.rs`) and updated macOS `.app`, Windows Inno Setup, WebAssembly (`wasm32-unknown-unknown`), and GitHub Actions CI/Release pipelines for Rust.
+- **Comprehensive Verification & Test Suite**:
+  - Added 28 integration and unit tests in `tests/game_tests.rs` verifying wave palettes, silo visibility, ROM speed progression, center vs. side silo ABM speeds, smart bomb evasion AI, MIRV splitters, fliers, altitude pacing, chain-reaction scoring, bonus cities, end-of-wave tallying, leaderboard persistence, attract AI demo, options menu, POKEY waveform synthesis, CRT shader evaluation, and embedded window icons.
+
+---
+
 ## [1.2.0] - 2026-09-04
 
 ### Added
@@ -28,10 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Quick hotkeys: `F1` / `Tab` CRT scanline shader toggle, `F11` / `Alt+Enter` fullscreen toggle, `M` sound mute toggle, and `-` / `+` global volume adjustments.
   - Non-intrusive on-screen HUD notification banners for all hotkey settings.
 - **WebAssembly (WASM) Web Port**:
-  - Pure WebAssembly build support (`GOOS=js GOARCH=wasm`) with automated compilation script in `scripts/build-wasm.sh`.
+  - Pure WebAssembly build support with automated compilation script in `scripts/build-wasm.sh`.
   - Retro arcade-styled web runner and loader page in `web/index.html` with responsive aspect-ratio scaling and audio auto-resume.
 - **Hygiene & High Score Storage Isolation**:
-  - User high score persistence in `os.UserConfigDir()` (`~/.config/missile-command/highscores.json`), preventing repository file pollution during local play.
+  - User high score persistence in the OS user config directory (`highscores.json`), preventing repository file pollution during local play.
   - Isolated test fixtures for high score storage.
   - Pruned deprecated legacy stroke font.
   - Symmetrical valley city placement with clearance and spacing unit tests.
@@ -42,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Multi-resolution Windows Icon (`assets/icon.ico`) spanning 16×16 to 256×256.
   - Linux Freedesktop icon suite in `assets/icons/icon-*.png`.
   - Theme-aware WebAssembly web favicons (`web/favicon.ico`, `web/favicon-light.png`, `web/favicon-dark.png`, `web/apple-touch-icon.png`).
-  - Runtime desktop window and taskbar/dock icon integration via embedded `assets.GetWindowIcons()` and `ebiten.SetWindowIcon()`.
+  - Runtime desktop window and taskbar/dock icon integration.
   - Standalone double-clickable macOS application bundle packaging script in `scripts/bundle-macos.sh`.
 
 ---
@@ -75,4 +89,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI/CD & GitHub Workflows**:
   - Multi-platform GitHub Actions CI test suite across macOS, Linux, and Windows.
   - Automated GitHub Releases workflow publishing cross-platform precompiled binaries.
-

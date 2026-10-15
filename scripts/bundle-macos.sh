@@ -7,7 +7,7 @@ CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
-VERSION="${1:-1.2.0}"
+VERSION="${1:-2.0.0}"
 BIN_SRC="${2:-}"
 
 echo "📦 Bundling ${APP_NAME} v${VERSION} for macOS..."
@@ -20,14 +20,15 @@ if [ -n "${BIN_SRC}" ]; then
     echo "  📋 Installing binary from ${BIN_SRC}..."
     cp "${BIN_SRC}" "${MACOS_DIR}/missile-command"
 else
-    echo "  🔨 Compiling binary..."
-    go build -ldflags="-s -w" -o "${MACOS_DIR}/missile-command" .
+    echo "  🔨 Compiling Rust release binary..."
+    cargo build --release --bin missile-command
+    cp "target/release/missile-command" "${MACOS_DIR}/missile-command"
 fi
 
 # Ensure icon.icns exists
 if [ ! -f "assets/icon.icns" ]; then
     echo "  🎨 Generating assets/icon.icns..."
-    go run scripts/generate-icons.go
+    cargo run --release --bin generate_icons
 fi
 
 # Copy icon

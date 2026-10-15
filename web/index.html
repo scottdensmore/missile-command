@@ -58,6 +58,12 @@
       width: 100%;
       aspect-ratio: 1024 / 924;
     }
+    #glcanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      outline: none;
+    }
     #loading {
       position: absolute;
       display: flex;
@@ -68,6 +74,7 @@
       color: #f0dc20;
       font-size: 1rem;
       letter-spacing: 1px;
+      pointer-events: none;
     }
     .spinner {
       width: 36px;
@@ -128,7 +135,6 @@
       text-decoration: underline;
     }
   </style>
-  <script src="wasm_exec.js"></script>
 </head>
 <body>
   <header>
@@ -137,9 +143,10 @@
   </header>
 
   <main id="game-container">
+    <canvas id="glcanvas" tabindex="1"></canvas>
     <div id="loading">
       <div class="spinner"></div>
-      <span>SYNTHESIZING POKEY AUDIO & SIMULATION...</span>
+      <span>SYNTHESIZING POKEY AUDIO &amp; SIMULATION...</span>
     </div>
   </main>
 
@@ -160,32 +167,28 @@
       </div>
     </div>
     <div class="footer-credits">
-      Pure Go &amp; Ebitengine &bull; Discrete 4-Channel POKEY Sound Synthesis &bull; <a href="https://github.com/scottdensmore/missile-command" target="_blank" rel="noreferrer">GitHub Repository</a>
+      Pure Rust &amp; Macroquad &bull; Discrete 4-Channel POKEY Sound Synthesis &bull; <a href="https://github.com/scottdensmore/missile-command" target="_blank" rel="noreferrer">GitHub Repository</a>
     </div>
   </footer>
 
+  <script src="mq_js_bundle.js"></script>
   <script>
-    if (!WebAssembly.instantiateStreaming) {
-      WebAssembly.instantiateStreaming = async (resp, importObject) => {
-        const source = await (await resp).arrayBuffer();
-        return await WebAssembly.instantiate(source, importObject);
-      };
-    }
-
-    const go = new Go();
     const loadingElem = document.getElementById('loading');
-
-    WebAssembly.instantiateStreaming(fetch('missile-command.wasm'), go.importObject).then(result => {
+    const canvasElem = document.getElementById('glcanvas');
+    if (canvasElem) {
+      canvasElem.addEventListener('contextmenu', e => e.preventDefault());
+    }
+    try {
+      load("missile-command.wasm");
       if (loadingElem) {
-        loadingElem.style.display = 'none';
+        setTimeout(() => { loadingElem.style.display = 'none'; }, 400);
       }
-      go.run(result.instance);
-    }).catch(err => {
+    } catch (err) {
       console.error('Failed to load WebAssembly application:', err);
       if (loadingElem) {
         loadingElem.innerHTML = '<span style="color:#f02020;">Failed to load WebAssembly binary. Please ensure missile-command.wasm is built.</span>';
       }
-    });
+    }
   </script>
 </body>
 </html>

@@ -1,3 +1,6 @@
+# Rust build artifacts
+/target/
+
 # Binaries and executable outputs
 /missile-command
 /missile-command-*
@@ -6,7 +9,7 @@
 *.dll
 *.so
 *.dylib
-*.wasm
+/missile-command.wasm
 *.app/
 
 # Test binaries and profiles
@@ -21,13 +24,6 @@ profile.out
 /bin/
 /dist/
 /build/
-
-# Go workspace files
-go.work
-go.work.sum
-
-# Dependency directories (uncomment if not committing vendor)
-# /vendor/
 
 # IDE and editor settings
 .idea/
@@ -50,4 +46,3 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
-

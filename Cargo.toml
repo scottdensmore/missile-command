@@ -1,0 +1,24 @@
+[package]
+name = "missile-command"
+version = "2.0.0"
+edition = "2021"
+description = "Authentic 1980 Atari Missile Command arcade replica in Rust"
+license = "MIT"
+repository = "https://github.com/scottdensmore/missile-command"
+default-run = "missile-command"
+
+[lib]
+name = "missile_command"
+path = "src/lib.rs"
+
+[[bin]]
+name = "missile-command"
+path = "src/main.rs"
+
+[dependencies]
+macroquad = { version = "0.4", features = ["audio"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+image = { version = "0.25", default-features = false, features = ["png"] }
+rand = "0.8"
+getrandom = { version = "0.2", features = ["js"] }

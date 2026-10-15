@@ -9,12 +9,15 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag to release (e.g. v1.1.0; leave blank to detect from CHANGELOG / commits)'
+        description: 'Version tag to release (e.g. v2.0.0; leave blank to detect from CHANGELOG / commits)'
         required: false
         default: ''
 
 permissions:
   contents: write
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   prepare-release:
@@ -83,8 +86,8 @@ jobs:
             if [ "${SHOULD_RELEASE}" != "true" ]; then
               LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
               if [ -z "${LATEST_TAG}" ]; then
-                RELEASE_TAG="v1.0.0"
-                VERSION="1.0.0"
+                RELEASE_TAG="v2.0.0"
+                VERSION="2.0.0"
                 SHOULD_RELEASE="true"
                 echo "No prior tags found. Initializing release: ${RELEASE_TAG}"
               else
@@ -171,16 +174,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-
       - name: Install Linux Build Dependencies
         if: matrix.os == 'ubuntu-latest' && matrix.target == 'linux-amd64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev
+          sudo apt-get install -y libgl1-mesa-dev libxi-dev libxcursor-dev libx11-dev libasound2-dev pkg-config
+
+      - name: Set up Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target == 'macos-universal' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target == 'wasm' && 'wasm32-unknown-unknown' || '' }}
+
+      - name: Cache Cargo Registry & Build
+        uses: Swatinem/rust-cache@v2
 
       # -------------------------------------------------------------
       # LINUX AMD64 BUILD & PACKAGE
@@ -189,13 +195,15 @@ jobs:
         if: matrix.target == 'linux-amd64'
         run: |
           mkdir -p dist
-          go build -ldflags="-s -w" -o dist/missile-command-linux-amd64 .
-          
+          cargo build --release --bin missile-command
+          cp target/release/missile-command dist/missile-command-linux-amd64
+          strip dist/missile-command-linux-amd64 || true
+
           mkdir -p dist/package-linux/missile-command/icons
           cp dist/missile-command-linux-amd64 dist/package-linux/missile-command/missile-command
           cp README.md LICENSE dist/package-linux/missile-command/
           cp -r assets/icons/* dist/package-linux/missile-command/icons/
-          
+
           tar -czvf dist/missile-command-linux-amd64.tar.gz -C dist/package-linux missile-command
           rm -rf dist/package-linux
 
@@ -206,17 +214,20 @@ jobs:
         if: matrix.target == 'macos-universal'
         run: |
           mkdir -p dist
-          
-          # Compile standalone arm64 and amd64
-          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/missile-command-darwin-arm64 .
-          CGO_ENABLED=1 CGO_CFLAGS="-arch x86_64" CGO_LDFLAGS="-arch x86_64" GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/missile-command-darwin-amd64 .
-          
+
+          # Compile standalone arm64 and x86_64 release binaries
+          cargo build --release --target aarch64-apple-darwin --bin missile-command
+          cargo build --release --target x86_64-apple-darwin --bin missile-command
+
+          cp target/aarch64-apple-darwin/release/missile-command dist/missile-command-darwin-arm64
+          cp target/x86_64-apple-darwin/release/missile-command dist/missile-command-darwin-amd64
+
           # Merge into Universal 2 binary
           lipo -create -output dist/missile-command-darwin-universal dist/missile-command-darwin-arm64 dist/missile-command-darwin-amd64
-          
+
           # Package into standalone Missile Command.app
           bash scripts/bundle-macos.sh "${{ needs.prepare-release.outputs.version }}" dist/missile-command-darwin-universal
-          
+
           # Create distributable zip archive
           zip -r dist/Missile-Command-macOS-Universal.zip "Missile Command.app"
           rm -f dist/missile-command-darwin-universal
@@ -233,7 +244,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          go build -ldflags="-s -w" -o dist/missile-command-windows-amd64.exe .
+          cargo build --release --bin missile-command
+          Copy-Item target/release/missile-command.exe dist/missile-command-windows-amd64.exe -Force
 
           # Compile Inno Setup Installer
           $iscc = Get-Command iscc.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
@@ -241,14 +253,14 @@ jobs:
               $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           }
           & $iscc "/DAppVersion=${{ needs.prepare-release.outputs.version }}" "/DBinaryPath=dist\missile-command-windows-amd64.exe" scripts/setup-windows.iss
-          
+
           # Create Portable ZIP Package
           New-Item -ItemType Directory -Force -Path dist/package-windows
           Copy-Item dist/missile-command-windows-amd64.exe dist/package-windows/missile-command.exe
           Copy-Item assets/icon.ico dist/package-windows/
           Copy-Item README.md dist/package-windows/
           Copy-Item LICENSE dist/package-windows/
-          
+
           Compress-Archive -Path dist/package-windows/* -DestinationPath dist/missile-command-windows-amd64.zip -Force
           Remove-Item -Recurse -Force dist/package-windows
 
@@ -260,7 +272,7 @@ jobs:
         run: |
           mkdir -p dist
           bash scripts/build-wasm.sh
-          
+
           # Package web directory into missile-command-wasm.zip
           (cd web && zip -r ../dist/missile-command-wasm.zip .)
 
@@ -305,7 +317,7 @@ jobs:
           sha256sum * > checksums.txt
           cat checksums.txt
           cd ..
-          
+
           if [ -s changelog_notes.txt ]; then
             echo "HAS_NOTES=true" >> "$GITHUB_ENV"
           else

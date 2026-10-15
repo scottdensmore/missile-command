@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-    Builds the Windows binary and Inno Setup installer for Missile Command.
+    Builds the Windows Rust binary and Inno Setup installer for Missile Command.
 .PARAMETER Version
-    Version string to inject into the installer (e.g. "1.1.0"). Default is "1.1.0".
+    Version string to inject into the installer (e.g. "2.0.0"). Default is "2.0.0".
 .PARAMETER BinaryPath
     Optional path to precompiled missile-command-windows-amd64.exe.
 #>
 param (
-    [string]$Version = "1.1.0",
+    [string]$Version = "2.0.0",
     [string]$BinaryPath = ""
 )
 
@@ -27,8 +27,9 @@ if ([string]::IsNullOrWhiteSpace($BinaryPath)) {
 }
 
 if (-not (Test-Path $BinaryPath)) {
-    Write-Host "🔨 Compiling Windows binary ($BinaryPath)..." -ForegroundColor Cyan
-    go build -ldflags="-s -w" -o $BinaryPath .
+    Write-Host "🔨 Compiling Windows Rust release binary ($BinaryPath)..." -ForegroundColor Cyan
+    cargo build --release --bin missile-command
+    Copy-Item (Join-Path $RootDir "target\release\missile-command.exe") $BinaryPath -Force
 }
 
 # Locate Inno Setup Compiler (iscc.exe)
