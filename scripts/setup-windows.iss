@@ -1,6 +1,6 @@
 ; Inno Setup Script for Missile Command
 #ifndef AppVersion
-  #define AppVersion "1.1.0"
+  #define AppVersion "2.0.0"
 #endif
 
 #ifndef BinaryPath

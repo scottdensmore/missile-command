@@ -6,7 +6,7 @@
 
 ### *THE SKY IS FALLING. SIX CITIES STAND IN THE BALANCE.*
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go)](https://golang.org)
+[![Rust](https://img.shields.io/badge/Rust-2021_Edition-DEA584?style=for-the-badge&logo=rust&logoColor=black)](https://www.rust-lang.org)
 [![CI Status](https://img.shields.io/badge/CI-Passing-2ea44f?style=for-the-badge&logo=githubactions)](https://github.com/scottdensmore/missile-command/actions)
 [![Release](https://img.shields.io/badge/Release-Latest-f0dc20?style=for-the-badge&logo=atari&logoColor=black)](https://github.com/scottdensmore/missile-command/releases)
 [![License](https://img.shields.io/badge/License-MIT-e02424?style=for-the-badge)](LICENSE)
@@ -24,11 +24,11 @@
 
 ## 🔥 AUTHENTIC 1980 ARCADE ENGINEERING
 
-Step back into 1980 and experience **Dave Theurer's** legendary Atari arcade masterpiece, recreated in pure Go and [Ebitengine](https://ebitengine.org/) with zero external audio files or sprite sheets. Every pixel, color cycle, and sound wave is synthesized in real time to match the original coin-op hardware:
+Step back into 1980 and experience **Dave Theurer's** legendary Atari arcade masterpiece, recreated in pure **Rust** and [Macroquad](https://macroquad.rs/) with zero external audio files or sprite sheets. Every pixel, color cycle, and sound wave is synthesized in real time to match the original coin-op hardware:
 
 | Arcade Subsystem | Hardware-Accurate Implementation |
 | :--- | :--- |
-| 🖥️ **256×231 CRT Raster & Phosphor Shader** | Native 256×231 arcade framebuffer with aspect-ratio letterboxing, sinusoidal CRT scanlines, phosphor saturation bloom, and nuclear detonation screen flashes. |
+| 🖥️ **256×231 CRT Raster & Phosphor Shader** | Native 256×231 arcade software framebuffer with aspect-ratio letterboxing, GLSL sinusoidal CRT scanlines, phosphor saturation bloom, and nuclear detonation screen flashes. |
 | 🔊 **Atari POKEY 4-Channel Sound Chip** | Real-time 44.1 kHz synthesis of the CO-12294 POKEY chip—complete with 4-bit, 5-bit, and 17-bit LFSR polynomial noise rumbles, ABM launch whistles, klaxon sirens, and satellite telemetry. |
 | 🚀 **Tri-Silo Tactical Defense** | Command **Alpha** (Left), **Delta** (Center), and **Omega** (Right) missile batteries. **Delta Base** fires high-velocity interceptors at **2.3× speed** (`7.5 px/frame`) for emergency low-altitude saves. |
 | 🧠 **Smart Bomb Evasion AI** | Starting in Wave 6, spinning diamond **Smart Bombs** actively scan for expanding blast perimeters and steer around your explosions in real time. |
@@ -99,25 +99,25 @@ Grab precompiled packages for your platform from the **[Releases Page](https://g
 * 🌐 **WebAssembly (`missile-command-wasm.zip`)**: Play directly in any modern browser.
 
 ### 2. Build & Run from Source
-Requires [Go 1.25+](https://golang.org/dl/).
+Requires [Rust (stable toolchain)](https://rustup.rs/).
 
 ```bash
 git clone https://github.com/scottdensmore/missile-command.git
 cd missile-command
 
 # Launch the arcade cabinet immediately
-go run .
+cargo run --release
 
-# Run the test suite
-go test -v ./...
+# Run the full verification & test suite
+cargo test
 
 # Optional: Package a standalone macOS .app bundle or WebAssembly build
 bash scripts/bundle-macos.sh
 bash scripts/build-wasm.sh
 ```
 
-> **Linux Dependencies:** If building from source on Ubuntu/Debian, install OpenGL & ALSA headers:
-> `sudo apt-get install -y libgl1-mesa-dev xorg-dev libasound2-dev`
+> **Linux Dependencies:** If building from source on Ubuntu/Debian, install OpenGL, X11 & ALSA headers:
+> `sudo apt-get install -y libgl1-mesa-dev libxi-dev libxcursor-dev libx11-dev libasound2-dev pkg-config`
 
 ---
 
@@ -125,22 +125,30 @@ bash scripts/build-wasm.sh
 
 ```text
 missile-command/
-├── main.go              # Entry point & window initialization
+├── Cargo.toml           # Rust package manifest & dependencies
 ├── assets/              # Embedded window icons & arcade cabinet banner
-├── game/
-│   ├── game.go          # State machine, wave lifecycle & tally logic
-│   ├── simulation.go    # Physics, MIRV splitting, smart bomb AI & collisions
-│   ├── input.go         # Mouse, keyboard, gamepad controls & attract mode AI
-│   ├── options.go       # In-game configuration menu
-│   ├── render.go        # 256×231 playfield, HUD & screen rendering
-│   ├── pipeline.go      # Aspect-ratio letterboxer & Kage CRT scanline shader
-│   ├── audio.go         # Real-time 4-channel Atari POKEY sound synthesizer
-│   ├── palette.go       # 10 arcade wave color RAM tables & explosion cycling
-│   ├── sprites.go       # 8×8 bitmap font & pixel-art entity sprites
-│   ├── objects.go       # Entity data structures & arcade wave progression table
-│   ├── scores.go        # Top 10 leaderboard & user config persistence
-│   ├── settings.go      # Persistent user settings
-│   └── math.go          # 2D vector math & coordinate space transforms
+├── src/
+│   ├── main.rs          # Macroquad window loop, GLSL CRT material & audio runtime
+│   ├── lib.rs           # Crate module exports for headless verification & tests
+│   ├── game.rs          # State machine, wave lifecycle & tally logic
+│   ├── simulation.rs    # Physics, MIRV splitting, smart bomb AI & collisions
+│   ├── input.rs         # Mouse, keyboard, gamepad controls & attract mode AI
+│   ├── options.rs       # In-game configuration menu
+│   ├── render.rs        # 256×231 playfield, HUD & screen rendering
+│   ├── framebuffer.rs   # Pure-Rust 256×231 RGBA rasterizer
+│   ├── pipeline.rs      # Aspect-ratio letterboxer & GLSL CRT scanline shader
+│   ├── audio.rs         # Real-time 4-channel Atari POKEY sound synthesizer
+│   ├── palette.rs       # 10 arcade wave color RAM tables & explosion cycling
+│   ├── sprites.rs       # 8×8 bitmap font & pixel-art entity sprites
+│   ├── objects.rs       # Entity data structures & arcade wave progression table
+│   ├── scores.rs        # Top 10 leaderboard & user config persistence
+│   ├── settings.rs      # Persistent user settings
+│   ├── math.rs          # 2D vector math & coordinate space transforms
+│   ├── assets.rs        # Embedded multi-resolution window icon decoder
+│   └── bin/
+│       └── generate_icons.rs # Multi-platform icon generator (.icns, .ico, PNGs)
+├── tests/
+│   └── game_tests.rs    # Comprehensive integration & unit verification suite
 ├── scripts/             # macOS .app, Windows installer & WASM packaging scripts
 └── web/                 # Retro HTML5 / WebAssembly runner
 ```
