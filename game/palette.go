@@ -2,6 +2,15 @@ package game
 
 import "image/color"
 
+// Shared arcade UI & HUD colors.
+var (
+	ColorWhite  = color.RGBA{R: 240, G: 240, B: 240, A: 255}
+	ColorRed    = color.RGBA{R: 240, G: 32, B: 32, A: 255}
+	ColorYellow = color.RGBA{R: 240, G: 220, B: 32, A: 255}
+	ColorCyan   = color.RGBA{R: 40, G: 220, B: 240, A: 255}
+	ColorGreen  = color.RGBA{R: 40, G: 240, B: 60, A: 255}
+)
+
 // Palette defines the colors used for rendering a specific wave.
 type Palette struct {
 	SkyColor        color.RGBA
@@ -157,7 +166,7 @@ func GetPaletteForWave(wave int) Palette {
 	return p
 }
 
-// ExplosionColors holds the authentic arcade palette cycling rainbow sequence.
+// ExplosionColors holds the authentic arcade palette-cycling rainbow sequence.
 var ExplosionColors = []color.RGBA{
 	{R: 255, G: 255, B: 255, A: 255}, // White
 	{R: 255, G: 240, B: 40, A: 255},  // Yellow
@@ -171,6 +180,5 @@ var ExplosionColors = []color.RGBA{
 
 // GetExplosionColor returns a pulsing color from the color-cycling explosion table based on frame tick.
 func GetExplosionColor(tick int) color.RGBA {
-	idx := (tick / 3) % len(ExplosionColors)
-	return ExplosionColors[idx]
+	return ExplosionColors[(tick/3)%len(ExplosionColors)]
 }

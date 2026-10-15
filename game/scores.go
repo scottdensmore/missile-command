@@ -38,13 +38,7 @@ func GetHighScoreFilePath() string {
 	if customHighScorePath != "" {
 		return customHighScorePath
 	}
-
-	configDir, err := os.UserConfigDir()
-	if err == nil && configDir != "" {
-		return filepath.Join(configDir, "missile-command", "highscores.json")
-	}
-
-	return "highscores.json"
+	return resolveUserConfigPath("highscores.json")
 }
 
 // DefaultHighScores returns the classic Atari Missile Command default high score table.
@@ -67,45 +61,22 @@ func DefaultHighScores() *HighScores {
 
 // LoadHighScores loads scores from disk, falling back to defaults if not found.
 func LoadHighScores() *HighScores {
-	targetPath := GetHighScoreFilePath()
-	data, err := os.ReadFile(targetPath)
-	if err != nil {
-		// If user config file doesn't exist, check local default highscores.json template
-		if targetPath != "highscores.json" {
-			data, err = os.ReadFile("highscores.json")
+	data, err := os.ReadFile(GetHighScoreFilePath())
+	if err == nil {
+		var hs HighScores
+		if json.Unmarshal(data, &hs) == nil && len(hs.Entries) > 0 {
+			return &hs
 		}
 	}
 
-	if err != nil {
-		hs := DefaultHighScores()
-		_ = hs.Save()
-		return hs
-	}
-
-	var hs HighScores
-	if err := json.Unmarshal(data, &hs); err != nil || len(hs.Entries) == 0 {
-		hs := DefaultHighScores()
-		_ = hs.Save()
-		return hs
-	}
-
-	return &hs
+	hs := DefaultHighScores()
+	_ = hs.Save()
+	return hs
 }
 
 // Save writes high scores to disk.
 func (hs *HighScores) Save() error {
-	data, err := json.MarshalIndent(hs, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	targetPath := GetHighScoreFilePath()
-	dir := filepath.Dir(targetPath)
-	if dir != "." && dir != "" {
-		_ = os.MkdirAll(dir, 0755)
-	}
-
-	return os.WriteFile(targetPath, data, 0644)
+	return writeJSONFile(GetHighScoreFilePath(), hs)
 }
 
 // IsHighScore checks if a given score qualifies for the top 10 list.
@@ -113,10 +84,7 @@ func (hs *HighScores) IsHighScore(score int) bool {
 	if score <= 0 {
 		return false
 	}
-	if len(hs.Entries) < 10 {
-		return true
-	}
-	return score > hs.Entries[len(hs.Entries)-1].Score
+	return len(hs.Entries) < 10 || score > hs.Entries[len(hs.Entries)-1].Score
 }
 
 // AddScore inserts a score in sorted order, truncating to 10 entries.
@@ -124,10 +92,7 @@ func (hs *HighScores) AddScore(initials string, score int) {
 	if len(initials) > 3 {
 		initials = initials[:3]
 	}
-	hs.Entries = append(hs.Entries, ScoreEntry{
-		Initials: initials,
-		Score:    score,
-	})
+	hs.Entries = append(hs.Entries, ScoreEntry{Initials: initials, Score: score})
 
 	sort.SliceStable(hs.Entries, func(i, j int) bool {
 		return hs.Entries[i].Score > hs.Entries[j].Score
@@ -136,7 +101,6 @@ func (hs *HighScores) AddScore(initials string, score int) {
 	if len(hs.Entries) > 10 {
 		hs.Entries = hs.Entries[:10]
 	}
-
 	_ = hs.Save()
 }
 
@@ -146,4 +110,22 @@ func (hs *HighScores) GetTopScore() int {
 		return hs.Entries[0].Score
 	}
 	return 75000
+}
+
+func resolveUserConfigPath(filename string) string {
+	if configDir, err := os.UserConfigDir(); err == nil && configDir != "" {
+		return filepath.Join(configDir, "missile-command", filename)
+	}
+	return filename
+}
+
+func writeJSONFile(path string, v any) error {
+	if dir := filepath.Dir(path); dir != "" && dir != "." {
+		_ = os.MkdirAll(dir, 0755)
+	}
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }

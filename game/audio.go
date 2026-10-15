@@ -8,9 +8,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
-const (
-	SampleRate = 44100
-)
+const SampleRate = 44100
 
 var (
 	audioContext *audio.Context
@@ -33,24 +31,18 @@ var (
 	bomberPlayer    *audio.Player
 	satPlayer       *audio.Player
 	smartBombPlayer *audio.Player
-	sirenPlayer     *audio.Player
 	audioMu         sync.Mutex
 
 	// Master volume & mute
-	masterVolume float64 = 1.0
-	isMuted      bool    = false
+	masterVolume = 1.0
+	isMuted      = false
 )
 
 // SetMasterVolume sets the global audio output volume (clamped between 0.0 and 1.0).
 func SetMasterVolume(v float64) {
 	audioMu.Lock()
 	defer audioMu.Unlock()
-	if v < 0.0 {
-		v = 0.0
-	} else if v > 1.0 {
-		v = 1.0
-	}
-	masterVolume = v
+	masterVolume = clamp(v, 0.0, 1.0)
 	updateLoopingVolumesLocked()
 }
 
@@ -96,40 +88,34 @@ func IsSoundEffectsEnabled() bool {
 func AdjustVolume(delta float64) float64 {
 	audioMu.Lock()
 	defer audioMu.Unlock()
-	masterVolume += delta
-	if masterVolume < 0.0 {
-		masterVolume = 0.0
-	} else if masterVolume > 1.0 {
-		masterVolume = 1.0
-	}
+	masterVolume = clamp(masterVolume+delta, 0.0, 1.0)
 	updateLoopingVolumesLocked()
 	return masterVolume
 }
 
-func updateLoopingVolumesLocked() {
-	volScale := masterVolume
+func effectiveVolumeLocked(base float64) float64 {
 	if isMuted {
-		volScale = 0.0
+		return 0.0
 	}
+	return base * masterVolume
+}
+
+func updateLoopingVolumesLocked() {
 	if bomberPlayer != nil {
-		bomberPlayer.SetVolume(0.16 * volScale)
+		bomberPlayer.SetVolume(effectiveVolumeLocked(0.16))
 	}
 	if satPlayer != nil {
-		satPlayer.SetVolume(0.14 * volScale)
+		satPlayer.SetVolume(effectiveVolumeLocked(0.14))
 	}
 	if smartBombPlayer != nil {
-		smartBombPlayer.SetVolume(0.18 * volScale)
+		smartBombPlayer.SetVolume(effectiveVolumeLocked(0.18))
 	}
 }
 
 // InitAudio initializes the audio context and synthesizes all POKEY waveforms.
 func InitAudio() {
 	audioOnce.Do(func() {
-		defer func() {
-			if r := recover(); r != nil {
-				// Audio driver unavailable
-			}
-		}()
+		defer func() { _ = recover() }()
 
 		audioContext = audio.NewContext(SampleRate)
 
@@ -149,20 +135,14 @@ func InitAudio() {
 
 func playSoundSafe(buf []byte, vol float64) {
 	audioMu.Lock()
-	effectiveVol := vol * masterVolume
-	if isMuted {
-		effectiveVol = 0.0
-	}
+	effectiveVol := effectiveVolumeLocked(vol)
 	audioMu.Unlock()
 
 	if audioContext == nil || buf == nil || effectiveVol <= 0.0 {
 		return
 	}
-	defer func() {
-		_ = recover()
-	}()
-	p := audioContext.NewPlayerFromBytes(buf)
-	if p != nil {
+	defer func() { _ = recover() }()
+	if p := audioContext.NewPlayerFromBytes(buf); p != nil {
 		p.SetVolume(effectiveVol)
 		p.Play()
 	}
@@ -170,127 +150,43 @@ func playSoundSafe(buf []byte, vol float64) {
 
 // --- Event Sound Effects ---
 
-// PlayLaunchSound plays the classic high-to-low ABM rocket launch whistle.
-func PlayLaunchSound() {
-	playSoundSafe(launchPCM, 0.20)
-}
-
-// PlayExplosionSound plays the signature deep, crunchy POKEY noise explosion rumble.
-func PlayExplosionSound() {
-	playSoundSafe(explosionPCM, 0.45)
-}
-
-// PlayTallySound plays the rapid electronic blip used during end-of-wave counting.
-func PlayTallySound() {
-	playSoundSafe(tallyPCM, 0.18)
-}
-
-// PlaySiloLowSound plays the urgent dual-tone warning alarm when a silo has <= 3 missiles.
-func PlaySiloLowSound() {
-	playSoundSafe(siloLowPCM, 0.25)
-}
-
-// PlayCantFireSound plays the low buzzy warning click when trying to fire an empty or ruined silo.
-func PlayCantFireSound() {
-	playSoundSafe(cantFirePCM, 0.22)
-}
-
-// PlayBonusCitySound plays the joyful randomized electronic fanfare when earning a bonus city.
-func PlayBonusCitySound() {
-	playSoundSafe(bonusCityPCM, 0.28)
-}
-
-// PlayGameOverSound plays the massive apocalyptic nuclear detonation rumble for "THE END".
-func PlayGameOverSound() {
-	playSoundSafe(gameOverPCM, 0.45)
-}
-
-// PlaySirenAlert plays the 1.2-second wave start klaxon alert siren.
-func PlaySirenAlert() {
-	playSoundSafe(sirenPCM, 0.20)
-}
+func PlayLaunchSound()    { playSoundSafe(launchPCM, 0.20) }
+func PlayExplosionSound() { playSoundSafe(explosionPCM, 0.45) }
+func PlayTallySound()     { playSoundSafe(tallyPCM, 0.18) }
+func PlaySiloLowSound()   { playSoundSafe(siloLowPCM, 0.25) }
+func PlayCantFireSound()  { playSoundSafe(cantFirePCM, 0.22) }
+func PlayBonusCitySound() { playSoundSafe(bonusCityPCM, 0.28) }
+func PlayGameOverSound()  { playSoundSafe(gameOverPCM, 0.45) }
+func PlaySirenAlert()     { playSoundSafe(sirenPCM, 0.20) }
 
 // --- Continuous Sound Effects ---
 
-// SetBomberSound turns the bomber engine rumble on or off.
-func SetBomberSound(active bool) {
+func setLoopingSound(player **audio.Player, pcm []byte, baseVol float64, active bool) {
 	audioMu.Lock()
 	defer audioMu.Unlock()
 	if audioContext == nil {
 		return
 	}
 	if active {
-		if bomberPlayer == nil {
-			r := bytes.NewReader(bomberPCM)
-			loop := audio.NewInfiniteLoop(r, int64(len(bomberPCM)))
-			p, err := audioContext.NewPlayer(loop)
-			if err == nil {
-				p.SetVolume(0.16)
-				bomberPlayer = p
-				bomberPlayer.Play()
+		if *player == nil && len(pcm) > 0 {
+			loop := audio.NewInfiniteLoop(bytes.NewReader(pcm), int64(len(pcm)))
+			if p, err := audioContext.NewPlayer(loop); err == nil {
+				p.SetVolume(effectiveVolumeLocked(baseVol))
+				*player = p
+				p.Play()
 			}
 		}
-	} else {
-		if bomberPlayer != nil {
-			_ = bomberPlayer.Close()
-			bomberPlayer = nil
-		}
+	} else if *player != nil {
+		_ = (*player).Close()
+		*player = nil
 	}
 }
 
-// SetSatelliteSound turns the satellite high telemetry beep on or off.
-func SetSatelliteSound(active bool) {
-	audioMu.Lock()
-	defer audioMu.Unlock()
-	if audioContext == nil {
-		return
-	}
-	if active {
-		if satPlayer == nil {
-			r := bytes.NewReader(satPCM)
-			loop := audio.NewInfiniteLoop(r, int64(len(satPCM)))
-			p, err := audioContext.NewPlayer(loop)
-			if err == nil {
-				p.SetVolume(0.14)
-				satPlayer = p
-				satPlayer.Play()
-			}
-		}
-	} else {
-		if satPlayer != nil {
-			_ = satPlayer.Close()
-			satPlayer = nil
-		}
-	}
-}
+func SetBomberSound(active bool)    { setLoopingSound(&bomberPlayer, bomberPCM, 0.16, active) }
+func SetSatelliteSound(active bool) { setLoopingSound(&satPlayer, satPCM, 0.14, active) }
+func SetSmartBombSound(active bool) { setLoopingSound(&smartBombPlayer, smartBombPCM, 0.18, active) }
 
-// SetSmartBombSound turns the smart bomb warble on or off.
-func SetSmartBombSound(active bool) {
-	audioMu.Lock()
-	defer audioMu.Unlock()
-	if audioContext == nil {
-		return
-	}
-	if active {
-		if smartBombPlayer == nil {
-			r := bytes.NewReader(smartBombPCM)
-			loop := audio.NewInfiniteLoop(r, int64(len(smartBombPCM)))
-			p, err := audioContext.NewPlayer(loop)
-			if err == nil {
-				p.SetVolume(0.18)
-				smartBombPlayer = p
-				smartBombPlayer.Play()
-			}
-		}
-	} else {
-		if smartBombPlayer != nil {
-			_ = smartBombPlayer.Close()
-			smartBombPlayer = nil
-		}
-	}
-}
-
-// StopAllContinuousSounds silences all looping sounds (e.g. at wave end or game over).
+// StopAllContinuousSounds silences all looping sounds.
 func StopAllContinuousSounds() {
 	SetBomberSound(false)
 	SetSatelliteSound(false)
@@ -307,11 +203,7 @@ type PokeyLFSR struct {
 }
 
 func newPokeyLFSR() *PokeyLFSR {
-	return &PokeyLFSR{
-		poly4:  0x0F,
-		poly5:  0x1F,
-		poly17: 0x1FFFF,
-	}
+	return &PokeyLFSR{poly4: 0x0F, poly5: 0x1F, poly17: 0x1FFFF}
 }
 
 func (l *PokeyLFSR) stepPoly17() float64 {
@@ -354,7 +246,18 @@ func pokeyFreq(audf int) float64 {
 	return 64000.0 / (2.0 * float64(audf+1))
 }
 
-// synthLaunch creates the authentic ABM missile sweep down using POKEY linear AUDF register progression ($20 -> $DC).
+func advancePhase(phase *float64, freq float64) float64 {
+	*phase += 2.0 * math.Pi * freq / SampleRate
+	if *phase > 2.0*math.Pi {
+		*phase -= 2.0 * math.Pi
+	}
+	if math.Sin(*phase) >= 0 {
+		return 1.0
+	}
+	return -1.0
+}
+
+// synthLaunch creates the authentic ABM missile sweep down using POKEY linear AUDF register progression ($20 -> $E0).
 func synthLaunch() []byte {
 	duration := 0.28
 	numSamples := int(SampleRate * duration)
@@ -362,29 +265,11 @@ func synthLaunch() []byte {
 
 	phase := 0.0
 	for i := 0; i < numSamples; i++ {
-		t := float64(i) / SampleRate
-		progress := t / duration
-
-		// POKEY AUDF register linearly ramps from $20 (32, ~970 Hz) up to $E0 (224, ~142 Hz)
-		audf := 32.0 + progress*192.0
-		freq := pokeyFreq(int(audf))
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
-
-		// POKEY Pure Tone Square Wave (4-bit quantized volume 15 -> 0)
-		vol4Bit := int16((1.0 - progress*0.8) * 15.0)
-		if vol4Bit < 0 {
-			vol4Bit = 0
-		}
-		var sampleVal int16 = vol4Bit * 550
-		if math.Sin(phase) < 0 {
-			sampleVal = -sampleVal
-		}
-
-		write16BitLE(buf, i*2, sampleVal)
+		progress := float64(i) / float64(numSamples)
+		freq := pokeyFreq(int(32.0 + progress*192.0))
+		sq := advancePhase(&phase, freq)
+		vol4Bit := math.Max(0, (1.0-progress*0.8)*15.0)
+		write16BitLE(buf, i*2, int16(sq)*int16(vol4Bit)*550)
 	}
 	return buf
 }
@@ -400,22 +285,14 @@ func synthExplosion() []byte {
 	subPhase := 0.0
 
 	for i := 0; i < numSamples; i++ {
-		t := float64(i) / SampleRate
-		progress := t / duration
+		progress := float64(i) / float64(numSamples)
 
-		// Deep POKEY noise clocking: sweeps from 240 Hz down to 55 Hz for heavy sub-bass rumble
 		noiseClock := 240.0*math.Exp(-1.5*progress) + 55.0
-		sampleHold := int(SampleRate / noiseClock)
-		if sampleHold < 1 {
-			sampleHold = 1
-		}
-
+		sampleHold := max(1, int(SampleRate/noiseClock))
 		if i%sampleHold == 0 {
-			// 17-bit deep rumble (80%) + 5-bit distortion crackle (20%)
 			noiseVal = lfsr.stepPoly17()*0.80 + lfsr.stepPoly5()*0.20
 		}
 
-		// Sub-bass fundamental wave sweeping down from 68 Hz to 32 Hz
 		subFreq := 68.0 * (1.0 - progress*0.55)
 		subPhase += 2.0 * math.Pi * subFreq / SampleRate
 		if subPhase > 2.0*math.Pi {
@@ -423,26 +300,19 @@ func synthExplosion() []byte {
 		}
 		subBass := math.Sin(subPhase)
 
-		// 4-bit quantized volume envelope with sustained body and low-end tail
 		var vol4Bit float64
-		if progress < 0.12 {
-			// Punchy initial attack
+		switch {
+		case progress < 0.12:
 			vol4Bit = 15.0
-		} else if progress < 0.45 {
-			// Heavy sustained rumble body
+		case progress < 0.45:
 			vol4Bit = 15.0 - (progress-0.12)*8.0
-		} else {
-			// Deep bass decay
+		default:
 			vol4Bit = 12.0 * math.Pow(1.0-(progress-0.45)/0.55, 1.3)
 		}
-		if vol4Bit < 0 {
-			vol4Bit = 0
-		}
+		vol4Bit = math.Max(0, vol4Bit)
 
-		// Blend: 65% heavy 17-bit LFSR rumble + 35% sub-bass fundamental
 		mixed := noiseVal*0.65 + subBass*0.35
-		sampleVal := int16(mixed * (vol4Bit / 15.0) * 16500.0)
-		write16BitLE(buf, i*2, sampleVal)
+		write16BitLE(buf, i*2, int16(mixed*(vol4Bit/15.0)*16500.0))
 	}
 	return buf
 }
@@ -453,26 +323,13 @@ func synthTally() []byte {
 	numSamples := int(SampleRate * duration)
 	buf := make([]byte, numSamples*2)
 
-	// AUDF = $14 (~1523 Hz)
 	freq := pokeyFreq(20)
 	phase := 0.0
-
 	for i := 0; i < numSamples; i++ {
-		t := float64(i) / SampleRate
-		progress := t / duration
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
-
+		progress := float64(i) / float64(numSamples)
+		sq := advancePhase(&phase, freq)
 		vol4Bit := int16((1.0 - progress*0.3) * 14.0)
-		var sampleVal int16 = vol4Bit * 500
-		if math.Sin(phase) < 0 {
-			sampleVal = -sampleVal
-		}
-
-		write16BitLE(buf, i*2, sampleVal)
+		write16BitLE(buf, i*2, int16(sq)*vol4Bit*500)
 	}
 	return buf
 }
@@ -488,36 +345,22 @@ func synthSiren() []byte {
 		t := float64(i) / SampleRate
 		progress := t / duration
 
-		// 9Hz alternating dual tone klaxon
-		step := int(t * 18.0)
-		var audf int
-		if step%2 == 0 {
-			audf = 40 // ~780 Hz
-		} else {
-			audf = 61 // ~516 Hz
+		audf := 61
+		if int(t*18.0)%2 == 0 {
+			audf = 40
 		}
-		freq := pokeyFreq(audf)
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
+		sq := advancePhase(&phase, pokeyFreq(audf))
 
 		vol := 12.0
 		if progress > 0.88 {
 			vol = 12.0 * (1.0 - (progress-0.88)/0.12)
 		}
-		var sampleVal int16 = int16(vol * 500)
-		if math.Sin(phase) < 0 {
-			sampleVal = -sampleVal
-		}
-
-		write16BitLE(buf, i*2, sampleVal)
+		write16BitLE(buf, i*2, int16(sq*vol*500))
 	}
 	return buf
 }
 
-// synthSiloLow creates the fast dual-tone alarm blip (AUDF=$1E ~1032Hz, AUDF=$3C ~516Hz) (70ms).
+// synthSiloLow creates the fast dual-tone alarm blip (AUDF=$1E ~1032Hz, AUDF=$3C ~516Hz).
 func synthSiloLow() []byte {
 	duration := 0.08
 	numSamples := int(SampleRate * duration)
@@ -525,103 +368,55 @@ func synthSiloLow() []byte {
 
 	phase := 0.0
 	for i := 0; i < numSamples; i++ {
-		t := float64(i) / SampleRate
-
-		var audf int
-		if t < duration/2.0 {
-			audf = 30 // ~1032 Hz
-		} else {
-			audf = 60 // ~516 Hz
+		audf := 60
+		if i < numSamples/2 {
+			audf = 30
 		}
-		freq := pokeyFreq(audf)
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
-
-		var sampleVal int16 = 14 * 550
-		if math.Sin(phase) < 0 {
-			sampleVal = -sampleVal
-		}
-
-		write16BitLE(buf, i*2, sampleVal)
+		sq := advancePhase(&phase, pokeyFreq(audf))
+		write16BitLE(buf, i*2, int16(sq)*14*550)
 	}
 	return buf
 }
 
-// synthCantFire generates the low 150Hz 5-bit/4-bit distortion buzzer for empty/ruined base clicks (110ms).
+// synthCantFire generates the low 150Hz 5-bit/4-bit distortion buzzer for empty/ruined base clicks.
 func synthCantFire() []byte {
 	duration := 0.11
 	numSamples := int(SampleRate * duration)
 	buf := make([]byte, numSamples*2)
 
 	lfsr := newPokeyLFSR()
-	clockRate := pokeyFreq(100) // ~316 Hz clocking
-	sampleHold := int(SampleRate / clockRate)
-	if sampleHold < 1 {
-		sampleHold = 1
-	}
-
+	sampleHold := max(1, int(SampleRate/pokeyFreq(100)))
 	phase := 0.0
-	freq := pokeyFreq(140) // ~226 Hz square wave
+	freq := pokeyFreq(140)
 	noiseVal := 0.0
 
 	for i := 0; i < numSamples; i++ {
-		t := float64(i) / SampleRate
-		progress := t / duration
-
+		progress := float64(i) / float64(numSamples)
 		if i%sampleHold == 0 {
 			noiseVal = lfsr.stepPoly5() * lfsr.stepPoly4()
 		}
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
-
-		sq := 1.0
-		if math.Sin(phase) < 0 {
-			sq = -1.0
-		}
-
+		sq := advancePhase(&phase, freq)
 		vol4Bit := (1.0 - progress*0.6) * 14.0
-		sampleVal := int16((sq*0.6 + noiseVal*0.4) * vol4Bit * 600.0)
-		write16BitLE(buf, i*2, sampleVal)
+		write16BitLE(buf, i*2, int16((sq*0.6+noiseVal*0.4)*vol4Bit*600.0))
 	}
 	return buf
 }
 
-// synthBonusCity generates the iconic 6-tone ascending arcade fanfare arpeggio (0.50s).
+// synthBonusCity generates the iconic 6-tone ascending arcade fanfare arpeggio.
 func synthBonusCity() []byte {
-	// Original Atari arcade pitch sequence: F5, A5, C6, E6, F6, A6
-	tones := []int{45, 35, 29, 23, 22, 17} // AUDF dividers for precise POKEY pitches
-	toneDur := 0.08
-	numSamples := int(SampleRate * toneDur * float64(len(tones)))
-	buf := make([]byte, numSamples*2)
+	tones := []int{45, 35, 29, 23, 22, 17} // F5, A5, C6, E6, F6, A6
+	samplesPerTone := int(SampleRate * 0.08)
+	buf := make([]byte, samplesPerTone*len(tones)*2)
 
 	phase := 0.0
 	for toneIdx, audf := range tones {
 		freq := pokeyFreq(audf)
-		samplesPerTone := int(SampleRate * toneDur)
 		startSample := toneIdx * samplesPerTone
-
 		for s := 0; s < samplesPerTone; s++ {
-			sampleIdx := startSample + s
 			progress := float64(s) / float64(samplesPerTone)
-
-			phase += 2.0 * math.Pi * freq / SampleRate
-			if phase > 2.0*math.Pi {
-				phase -= 2.0 * math.Pi
-			}
-
+			sq := advancePhase(&phase, freq)
 			vol4Bit := (1.0 - progress*0.4) * 14.0
-			var sampleVal int16 = int16(vol4Bit * 500)
-			if math.Sin(phase) < 0 {
-				sampleVal = -sampleVal
-			}
-
-			write16BitLE(buf, sampleIdx*2, sampleVal)
+			write16BitLE(buf, (startSample+s)*2, int16(sq*vol4Bit*500))
 		}
 	}
 	return buf
@@ -635,94 +430,53 @@ func synthGameOver() []byte {
 
 	lfsr := newPokeyLFSR()
 	noiseVal := 0.0
-
 	for i := 0; i < numSamples; i++ {
-		t := float64(i) / SampleRate
-		progress := t / duration
-
-		// Low AUDF clocking from $80 down to $FF for deep sub-bass earthquake rumble
-		audf := 128.0 + progress*127.0
-		clockRate := 64000.0 / (float64(audf) + 1.0)
-		sampleHold := int(SampleRate / clockRate)
-		if sampleHold < 1 {
-			sampleHold = 1
-		}
-
+		progress := float64(i) / float64(numSamples)
+		clockRate := 64000.0 / (128.0 + progress*127.0 + 1.0)
+		sampleHold := max(1, int(SampleRate/clockRate))
 		if i%sampleHold == 0 {
 			noiseVal = lfsr.stepPoly17()
 		}
-
 		envelope := math.Exp(-1.4 * progress)
-		sampleVal := int16(noiseVal * envelope * 15000.0)
-		write16BitLE(buf, i*2, sampleVal)
+		write16BitLE(buf, i*2, int16(noiseVal*envelope*15000.0))
 	}
 	return buf
 }
 
-// synthBomber creates a seamless 0.4s looping low engine motor drone (55Hz POKEY poly4 distortion).
+// synthBomber creates a seamless 0.4s looping low engine motor drone (58Hz POKEY poly4 distortion).
 func synthBomber() []byte {
-	duration := 0.40
-	numSamples := int(SampleRate * duration)
+	numSamples := int(SampleRate * 0.40)
 	buf := make([]byte, numSamples*2)
 
 	lfsr := newPokeyLFSR()
-	clockRate := 220.0
-	sampleHold := int(SampleRate / clockRate)
-
+	sampleHold := SampleRate / 220
 	phase := 0.0
-	freq := 58.0 // ~58 Hz engine fundamental
 	noiseVal := 0.0
 
 	for i := 0; i < numSamples; i++ {
 		if i%sampleHold == 0 {
 			noiseVal = lfsr.stepPoly4()
 		}
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
-
-		sq := 1.0
-		if math.Sin(phase) < 0 {
-			sq = -1.0
-		}
-
-		sampleVal := int16((sq*0.65 + noiseVal*0.35) * 4500.0)
-		write16BitLE(buf, i*2, sampleVal)
+		sq := advancePhase(&phase, 58.0)
+		write16BitLE(buf, i*2, int16((sq*0.65+noiseVal*0.35)*4500.0))
 	}
 	return buf
 }
 
-// synthSatellite creates a seamless 0.4s looping high-orbit radar telemetry chirp (1680Hz pulsed beacon).
+// synthSatellite creates a seamless 0.4s looping high-orbit radar telemetry chirp (1684Hz pulsed beacon).
 func synthSatellite() []byte {
-	duration := 0.40
-	numSamples := int(SampleRate * duration)
+	numSamples := int(SampleRate * 0.40)
 	buf := make([]byte, numSamples*2)
 
 	phase := 0.0
-	freq := pokeyFreq(18) // ~1684 Hz
-
+	freq := pokeyFreq(18)
 	for i := 0; i < numSamples; i++ {
 		t := float64(i) / SampleRate
-
-		// 2 rapid beeps every 400ms: beep at 0-50ms and 100-150ms, silent 150-400ms
-		active := (t < 0.05) || (t >= 0.10 && t < 0.15)
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
+		sq := advancePhase(&phase, freq)
+		var sampleVal int16
+		if (t < 0.05) || (t >= 0.10 && t < 0.15) {
+			sampleVal = int16(sq) * 5000
 		}
-
-		var sampleVal int16 = 0
-		if active {
-			if math.Sin(phase) > 0 {
-				sampleVal = 5000
-			} else {
-				sampleVal = -5000
-			}
-		}
-
 		write16BitLE(buf, i*2, sampleVal)
 	}
 	return buf
@@ -730,40 +484,22 @@ func synthSatellite() []byte {
 
 // synthSmartBomb creates a seamless 0.4s looping 240Hz rhythmic warble with 5-bit poly buzz.
 func synthSmartBomb() []byte {
-	duration := 0.40
-	numSamples := int(SampleRate * duration)
+	numSamples := int(SampleRate * 0.40)
 	buf := make([]byte, numSamples*2)
 
 	lfsr := newPokeyLFSR()
-	clockRate := 480.0
-	sampleHold := int(SampleRate / clockRate)
-
+	sampleHold := SampleRate / 480
 	phase := 0.0
 	noiseVal := 0.0
 
 	for i := 0; i < numSamples; i++ {
 		t := float64(i) / SampleRate
-
-		// 7.5 Hz frequency modulation between 180Hz and 300Hz
-		mod := math.Sin(2.0 * math.Pi * 7.5 * t)
-		freq := 240.0 + 60.0*mod
-
+		freq := 240.0 + 60.0*math.Sin(2.0*math.Pi*7.5*t)
 		if i%sampleHold == 0 {
 			noiseVal = lfsr.stepPoly5()
 		}
-
-		phase += 2.0 * math.Pi * freq / SampleRate
-		if phase > 2.0*math.Pi {
-			phase -= 2.0 * math.Pi
-		}
-
-		sq := 1.0
-		if math.Sin(phase) < 0 {
-			sq = -1.0
-		}
-
-		sampleVal := int16((sq*0.7 + noiseVal*0.3) * 4800.0)
-		write16BitLE(buf, i*2, sampleVal)
+		sq := advancePhase(&phase, freq)
+		write16BitLE(buf, i*2, int16((sq*0.7+noiseVal*0.3)*4800.0))
 	}
 	return buf
 }

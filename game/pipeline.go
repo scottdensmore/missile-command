@@ -8,6 +8,30 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// CRTShaderSrc provides subtle, authentic arcade CRT scanline and phosphor bloom effects.
+var CRTShaderSrc = []byte(`
+package main
+
+var Resolution vec2
+var FlashIntensity float
+
+func Fragment(position vec4, texCoord vec2, color vec4) vec4 {
+	orig := imageSrc0At(texCoord)
+	if FlashIntensity > 0.0 {
+		orig = mix(orig, vec4(1.0, 1.0, 1.0, 1.0), FlashIntensity)
+	}
+
+	// Subtle CRT scanline modulation
+	scanline := sin(texCoord.y * Resolution.y * 3.14159) * 0.08
+	col := orig.rgb - vec3(scanline)
+
+	// Slight phosphor saturation boost
+	col = col * 1.05
+
+	return vec4(col, orig.a)
+}
+`)
+
 // Pipeline manages the 256x231 arcade framebuffer, aspect-ratio scaling, and CRT post-processing.
 type Pipeline struct {
 	frameBuffer *ebiten.Image
@@ -35,22 +59,10 @@ func NewPipeline() *Pipeline {
 
 // DrawFrame renders the 256x231 buffer onto the destination screen with authentic aspect ratio.
 func (p *Pipeline) DrawFrame(screen *ebiten.Image, windowW, windowH int) {
-	// Calculate letterbox / pillarbox scaling
-	scaleX := float64(windowW) / SimWidth
-	scaleY := float64(windowH) / SimHeight
-	scale := math.Min(scaleX, scaleY)
+	scale := math.Min(float64(windowW)/SimWidth, float64(windowH)/SimHeight)
+	offsetX := (float64(windowW) - SimWidth*scale) / 2.0
+	offsetY := (float64(windowH) - SimHeight*scale) / 2.0
 
-	// Keep integer scale if close to integer, else float scale
-	if scale > 1.0 {
-		// e.g. 1024x924 -> scale = 4.0
-	}
-
-	renderW := SimWidth * scale
-	renderH := SimHeight * scale
-	offsetX := (float64(windowW) - renderW) / 2.0
-	offsetY := (float64(windowH) - renderH) / 2.0
-
-	// Clear full window to black
 	screen.Fill(color.Black)
 
 	flashVal := 0.0
@@ -74,7 +86,8 @@ func (p *Pipeline) DrawFrame(screen *ebiten.Image, windowW, windowH int) {
 		op.GeoM.Scale(scale, scale)
 		op.GeoM.Translate(offsetX, offsetY)
 		if flashVal > 0 {
-			op.ColorScale.Scale(1.0+float32(flashVal), 1.0+float32(flashVal), 1.0+float32(flashVal), 1.0)
+			f := 1.0 + float32(flashVal)
+			op.ColorScale.Scale(f, f, f, 1.0)
 		}
 		screen.DrawImage(p.frameBuffer, op)
 	}
