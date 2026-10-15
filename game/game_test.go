@@ -118,12 +118,11 @@ func TestSmartBombEvasion(t *testing.T) {
 	g.Explosions = append(g.Explosions, exp)
 
 	sb := &SmartBomb{
-		Start:    Point{X: 100, Y: 75},
-		Curr:     Point{X: 100, Y: 75},
-		Target:   Point{X: 100, Y: 216},
-		Speed:    1.5,
-		Progress: 0.0,
-		Active:   true,
+		Start:  Point{X: 100, Y: 75},
+		Curr:   Point{X: 100, Y: 75},
+		Target: Point{X: 100, Y: 216},
+		Speed:  1.5,
+		Active: true,
 	}
 	g.SmartBombs = append(g.SmartBombs, sb)
 
@@ -638,36 +637,6 @@ func TestMissilesPerSiloConfiguration(t *testing.T) {
 			t.Errorf("Battery %d expected MaxAmmo=100 and Ammo=100, got Max=%d Ammo=%d",
 				i, g.Batteries[i].MaxAmmo, g.Batteries[i].Ammo)
 		}
-	}
-}
-
-func TestCalculateSiloNeedles(t *testing.T) {
-	// For maxAmmo 10
-	if CalculateSiloNeedles(0, 10) != 0 {
-		t.Errorf("Expected 0 needles for 0 ammo")
-	}
-	if CalculateSiloNeedles(5, 10) != 5 {
-		t.Errorf("Expected 5 needles for 5 ammo out of 10")
-	}
-	if CalculateSiloNeedles(10, 10) != 10 {
-		t.Errorf("Expected 10 needles for 10 ammo out of 10")
-	}
-
-	// For maxAmmo 100
-	if CalculateSiloNeedles(100, 100) != 10 {
-		t.Errorf("Expected 10 needles for 100/100 ammo")
-	}
-	if CalculateSiloNeedles(90, 100) != 9 {
-		t.Errorf("Expected 9 needles for 90/100 ammo")
-	}
-	if CalculateSiloNeedles(50, 100) != 5 {
-		t.Errorf("Expected 5 needles for 50/100 ammo")
-	}
-	if CalculateSiloNeedles(1, 100) != 1 {
-		t.Errorf("Expected 1 needle for 1/100 ammo")
-	}
-	if CalculateSiloNeedles(0, 100) != 0 {
-		t.Errorf("Expected 0 needles for 0/100 ammo")
 	}
 }
 

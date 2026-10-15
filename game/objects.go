@@ -1,7 +1,5 @@
 package game
 
-import "math"
-
 type Crosshair struct {
 	Pos Point
 }
@@ -19,8 +17,6 @@ type ICBM struct {
 type SmartBomb struct {
 	Start, Curr, Target Point
 	Speed               float64
-	Progress            float64
-	EvasionVelocity     Point
 	Active              bool
 	AnimTick            int
 }
@@ -28,19 +24,18 @@ type SmartBomb struct {
 type FlierType int
 
 const (
-	FlierNone FlierType = iota
-	FlierBomber
+	FlierBomber FlierType = iota + 1
 	FlierSatellite
 )
 
 type Flier struct {
-	Type            FlierType
-	X, Y            float64
-	Speed           float64 // positive: moves right, negative: moves left
-	DropCooldown    int
-	BombsRemaining  int
-	Active          bool
-	AnimTick        int
+	Type           FlierType
+	X, Y           float64
+	Speed          float64 // positive: moves right, negative: moves left
+	DropCooldown   int
+	BombsRemaining int
+	Active         bool
+	AnimTick       int
 }
 
 type ABM struct {
@@ -70,31 +65,28 @@ type Explosion struct {
 }
 
 type City struct {
-	Position     Point
-	Destroyed    bool
-	Rebuilding   bool
-	RebuildTimer int
+	Position  Point
+	Destroyed bool
 }
 
 type Battery struct {
-	Index             int // 0: Left, 1: Center, 2: Right
-	Position          Point
-	MaxAmmo           int
-	Ammo              int
-	Destroyed         bool
-	LowWarningPlayed  bool
-	CanFireCooldown   int
+	Index            int // 0: Left, 1: Center, 2: Right
+	Position         Point
+	MaxAmmo          int
+	Ammo             int
+	Destroyed        bool
+	LowWarningPlayed bool
 }
 
 // WaveData defines enemy assault parameters for a specific wave.
 type WaveData struct {
-	TotalICBMs  int
-	Speed       float64
-	SmartBombs  int
-	FlierDelay  int
+	TotalICBMs int
+	Speed      float64
+	SmartBombs int
+	FlierDelay int
 }
 
-// ArcadeWaveTable matches the authentic 1980 Atari arcade missile command progression.
+// ArcadeWaveTable matches the authentic 1980 Atari arcade Missile Command progression.
 // Speeds are derived directly from the arcade ROM ICBM frame delay table: speed = 1 / (1 + delay).
 // Wave 15+ reaches 0 delay (updates every frame, 1.00 px/frame at 60 FPS).
 var ArcadeWaveTable = []WaveData{
@@ -129,11 +121,4 @@ func GetWaveData(wave int) WaveData {
 		idx = len(ArcadeWaveTable) - 1
 	}
 	return ArcadeWaveTable[idx]
-}
-
-// DistanceToPoint calculates Euclidean distance.
-func DistanceToPoint(p1, p2 Point) float64 {
-	dx := p1.X - p2.X
-	dy := p1.Y - p2.Y
-	return math.Sqrt(dx*dx + dy*dy)
 }

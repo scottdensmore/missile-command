@@ -144,12 +144,12 @@ func packICO(pngImages [][]byte, outputPath string) error {
 		entry := make([]byte, 16)
 		entry[0] = w
 		entry[1] = h
-		entry[2] = 0 // color count
-		entry[3] = 0 // reserved
-		binary.LittleEndian.PutUint16(entry[4:6], 1)                        // color planes
-		binary.LittleEndian.PutUint16(entry[6:8], 32)                       // bits per pixel
-		binary.LittleEndian.PutUint32(entry[8:12], uint32(len(pngData)))    // data size
-		binary.LittleEndian.PutUint32(entry[12:16], offset)                 // data offset
+		entry[2] = 0                                                     // color count
+		entry[3] = 0                                                     // reserved
+		binary.LittleEndian.PutUint16(entry[4:6], 1)                     // color planes
+		binary.LittleEndian.PutUint16(entry[6:8], 32)                    // bits per pixel
+		binary.LittleEndian.PutUint32(entry[8:12], uint32(len(pngData))) // data size
+		binary.LittleEndian.PutUint32(entry[12:16], offset)              // data offset
 
 		if _, err := f.Write(entry); err != nil {
 			return err
