@@ -1,4 +1,5 @@
 [target.wasm32-unknown-unknown]
 # quad-snd 0.2.8 declares extern "C" audio_* functions without #[link(wasm_import_module = "env")].
 # Rust 1.82+ (LLVM 19+) requires --import-undefined so rust-lld imports those symbols from mq_js_bundle.js.
-rustflags = ["-C", "link-arg=--import-undefined"]
+# getrandom 0.4+ requires getrandom_backend="wasm_js" on wasm32-unknown-unknown.
+rustflags = ["-C", "link-arg=--import-undefined", "--cfg", "getrandom_backend=\"wasm_js\""]

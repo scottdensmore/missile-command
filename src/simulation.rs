@@ -8,7 +8,7 @@ use crate::math::{clamp, Point, SIM_WIDTH};
 use crate::objects::{
     get_wave_data, Explosion, ExplosionState, Flier, FlierType, SmartBomb, ABM, ICBM,
 };
-use rand::Rng;
+use rand::RngExt;
 
 impl Game {
     /// Runs one frame of entity spawning, movement, and collision detection.
@@ -108,11 +108,11 @@ impl Game {
 
         let wdata = get_wave_data(self.wave);
         let can_spawn_sb = self.smart_bombs_left > 0 && self.smart_bombs.len() < 3;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
-        if can_spawn_sb && (self.icbms_remaining <= 0 || rng.gen::<f64>() < 0.35) {
+        if can_spawn_sb && (self.icbms_remaining <= 0 || rng.random::<f64>() < 0.35) {
             self.smart_bombs_left -= 1;
-            let spawn_x = 20.0 + rng.gen::<f64>() * (SIM_WIDTH - 40.0);
+            let spawn_x = 20.0 + rng.random::<f64>() * (SIM_WIDTH - 40.0);
             let target = self.pick_random_target();
             self.smart_bombs.push(SmartBomb {
                 start: Point::new(spawn_x, 0.0),
@@ -125,10 +125,11 @@ impl Game {
             set_smart_bomb_sound(true);
         } else if self.icbms_remaining > 0 {
             self.icbms_remaining -= 1;
-            let spawn_x = rng.gen::<f64>() * SIM_WIDTH;
+            let spawn_x = rng.random::<f64>() * SIM_WIDTH;
             let target = self.pick_random_target();
-            let is_split = self.wave >= 2 && self.icbms_remaining >= 2 && rng.gen::<f64>() < 0.25;
-            let split_alt = 72.0 + rng.gen::<f64>() * 31.0;
+            let is_split =
+                self.wave >= 2 && self.icbms_remaining >= 2 && rng.random::<f64>() < 0.25;
+            let split_alt = 72.0 + rng.random::<f64>() * 31.0;
 
             self.icbms.push(ICBM {
                 start: Point::new(spawn_x, 0.0),
@@ -145,7 +146,7 @@ impl Game {
 
         let min_cd = (55.0 - (self.wave as f64) * 2.5).max(20.0) as i32;
         let max_cd = (95.0 - (self.wave as f64) * 4.0).max(40.0) as i32;
-        self.spawn_cooldown = min_cd + rng.gen_range(0..=(max_cd - min_cd).max(0));
+        self.spawn_cooldown = min_cd + rng.random_range(0..=(max_cd - min_cd).max(0));
     }
 
     pub fn pick_random_target(&self) -> Point {
@@ -206,28 +207,36 @@ impl Game {
             }
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         if !targets.is_empty() {
-            targets[rng.gen_range(0..targets.len())]
+            targets[rng.random_range(0..targets.len())]
         } else {
-            Point::new(20.0 + rng.gen::<f64>() * (SIM_WIDTH - 40.0), 216.0)
+            Point::new(20.0 + rng.random::<f64>() * (SIM_WIDTH - 40.0), 216.0)
         }
     }
 
     pub fn update_flier(&mut self) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         if self.active_flier.is_none() {
             if !self.flier_spawned_this_wave && self.icbms_remaining > 2 {
                 self.flier_cooldown -= 1;
                 if self.flier_cooldown <= 0 {
                     self.flier_spawned_this_wave = true;
-                    let (ft, alt, mut speed) = if rng.gen::<f64>() < 0.45 {
-                        (FlierType::Satellite, 28.0 + rng.gen::<f64>() * 18.0, 0.50)
+                    let (ft, alt, mut speed) = if rng.random::<f64>() < 0.45 {
+                        (
+                            FlierType::Satellite,
+                            28.0 + rng.random::<f64>() * 18.0,
+                            0.50,
+                        )
                     } else {
-                        (FlierType::Bomber, 65.0 + rng.gen::<f64>() * 25.0, 1.0 / 3.0)
+                        (
+                            FlierType::Bomber,
+                            65.0 + rng.random::<f64>() * 25.0,
+                            1.0 / 3.0,
+                        )
                     };
 
-                    let start_x = if rng.gen::<f64>() < 0.5 {
+                    let start_x = if rng.random::<f64>() < 0.5 {
                         -16.0
                     } else {
                         speed = -speed;
@@ -239,7 +248,7 @@ impl Game {
                         x: start_x,
                         y: alt,
                         speed,
-                        drop_cooldown: 40 + rng.gen_range(0..50),
+                        drop_cooldown: 40 + rng.random_range(0..50),
                         bombs_remaining: 2,
                         active: true,
                         anim_tick: 0,
@@ -275,7 +284,7 @@ impl Game {
                 flier.drop_cooldown -= 1;
                 if flier.drop_cooldown <= 0 && can_drop {
                     flier.bombs_remaining -= 1;
-                    flier.drop_cooldown = 60 + rng.gen_range(0..40);
+                    flier.drop_cooldown = 60 + rng.random_range(0..40);
                     spawned_bomb = Some(Point::new(flier.x, flier.y));
                 }
             }
@@ -416,7 +425,7 @@ impl Game {
         let mut active = Vec::with_capacity(self.smart_bombs.len());
         let mut ground_hits = Vec::new();
         let old_sbs = std::mem::take(&mut self.smart_bombs);
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         for mut sb in old_sbs {
             if !sb.active {
@@ -435,7 +444,7 @@ impl Game {
                     let mut dx = sb.curr.x - exp.center.x;
                     let dy = sb.curr.y - exp.center.y;
                     if dx.abs() < 0.1 {
-                        dx = if rng.gen::<f64>() < 0.5 { 1.0 } else { -1.0 };
+                        dx = if rng.random::<f64>() < 0.5 { 1.0 } else { -1.0 };
                     }
                     let length = dx.hypot(dy);
                     if length > 0.0 {
